@@ -801,8 +801,8 @@
             
             <div class="upload-box" id="primeUpload">
                 <input type="file" id="primeFile" accept=".html" multiple>
-                <p>Prime League Match HTML(s) hier ablegen</p>
-                <small>oder klicken zum Auswählen (mehrere möglich)</small>
+                <p>Prime League Match HTML(s) hier ablegen (Optional)</p>
+                <small>oder klicken zum Auswählen (mehrere möglich) - Für Clash/Scrims nicht nötig</small>
             </div>
             
             <button id="analyzeBtn" disabled>🔍 Gegner analysieren</button>
@@ -1047,7 +1047,36 @@
                 alert('Bitte erst OP.GG Datei hochladen!');
                 return;
             }
-            
+            // Google Analytics Event Tracking
+function trackEvent(action, category = 'engagement', label = '') {
+    if (typeof gtag !== 'undefined') {
+        gtag('event', action, {
+            'event_category': category,
+            'event_label': label
+        });
+    }
+}
+
+// In analyzeData() Funktion hinzufügen (Zeile ~1360):
+async function analyzeData() {
+    trackEvent('analysis_started', 'tool_usage', currentAnalysis?.hasPrimeData ? 'with_prime' : 'solo_only');
+    resultsSection.style.display = 'block';
+    // Rest des Codes...
+}
+
+// In generatePDF() hinzufügen:
+function generatePDF() {
+    trackEvent('pdf_exported', 'export');
+    if (!currentAnalysis) return;
+    // Rest des Codes...
+}
+
+// In copyToDiscord() hinzufügen:
+function copyToDiscord() {
+    trackEvent('discord_copy', 'export');
+    if (!currentAnalysis) return;
+    // Rest des Codes...
+}
             const parser = new DOMParser();
             const doc = parser.parseFromString(opggData, 'text/html');
             
@@ -1110,17 +1139,18 @@
         }
         
         function checkAnalyzeButton() {
-            if (opggData && primeData.length > 0) {
-                analyzeBtn.disabled = false;
-                analyzeBtn.textContent = `🔍 ${teamPlayerNames.length} Spieler analysieren`;
-            } else if (opggData) {
-                analyzeBtn.disabled = true;
-                analyzeBtn.textContent = '⏳ Warte auf Prime League Daten...';
-            } else {
-                analyzeBtn.disabled = true;
-                analyzeBtn.textContent = '🔍 Gegner analysieren';
-            }
+    if (opggData) {
+        analyzeBtn.disabled = false;
+        if (primeData.length > 0) {
+            analyzeBtn.textContent = `🔍 ${teamPlayerNames.length} Spieler analysieren (mit Prime League)`;
+        } else {
+            analyzeBtn.textContent = `🔍 ${teamPlayerNames.length} Spieler analysieren (nur Solo Queue)`;
         }
+    } else {
+        analyzeBtn.disabled = true;
+        analyzeBtn.textContent = '🔍 Gegner analysieren';
+    }
+}
         
         // Data Extraction Functions
         function extractOPGGData(html) {
@@ -1496,25 +1526,26 @@
         }
         
         function analyzePlayerData(opggPlayers, primeMatches) {
-            const analysis = {
-                players: [],
-                teamWeaknesses: [],
-                banRecommendations: [],
-                strategies: [],
-                primeLeaguePerformance: [],
-                banAnalysis: {
-                    againstThem: {},
-                    byThem: {}
-                },
-                pickPatterns: {},
-                flexPicks: {},
-                championHistory: {},
-                banOrPickPatterns: {} // NEU!
-            };
-            
-            try {
-                // First, analyze Prime League data
-                if (primeMatches && primeMatches.length > 0) {
+    const analysis = {
+        players: [],
+        teamWeaknesses: [],
+        banRecommendations: [],
+        strategies: [],
+        primeLeaguePerformance: [],
+        banAnalysis: {
+            againstThem: {},
+            byThem: {}
+        },
+        pickPatterns: {},
+        flexPicks: {},
+        championHistory: {},
+        banOrPickPatterns: {},
+        hasPrimeData: primeMatches && primeMatches.length > 0 // NEU: Flag für Prime League Daten
+    };
+    
+    try {
+        // First, analyze Prime League data (wenn vorhanden)
+        if (primeMatches && primeMatches.length > 0) {
                     let totalGamesWon = 0;
                     let totalGamesPlayed = 0;
                     const playerPrimeStats = {};
@@ -1964,23 +1995,23 @@
                     analysis.primeLeagueStats = playerPrimeStats;
                 }
                 
-                // Calculate comprehensive ban priorities based on multiple factors
-                const championBanScores = new Map();
-                
-                // Analyze each player's data
-                opggPlayers.forEach(player => {
-                    const playerAnalysis = {
-                        ...player,
-                        comfortPicks: [],
-                        weakChampions: [],
-                        banPriority: 'low',
-                        notes: [],
-                        soloQAnalysis: true,
-                        primeLeagueStats: analysis.primeLeagueStats[player.name] || null,
-                        championPoolSize: 0,
-                        isOTP: false,
-                        performanceTrend: 'stable'
-                    };
+                // Calculate comprehensive ban priorities based on available data
+        const championBanScores = new Map();
+        
+        // Analyze each player's data
+        opggPlayers.forEach(player => {
+            const playerAnalysis = {
+                ...player,
+                comfortPicks: [],
+                weakChampions: [],
+                banPriority: 'low',
+                notes: [],
+                soloQAnalysis: true,
+                primeLeagueStats: analysis.primeLeagueStats ? analysis.primeLeagueStats[player.name] : null,
+                championPoolSize: 0,
+                isOTP: false,
+                performanceTrend: 'stable'
+            };
                     
                     // Ensure champions array exists
                     if (!player.champions || !Array.isArray(player.champions)) {
@@ -2025,27 +2056,52 @@
                     // Simply take top 10 champions by games played as comfort picks
                     playerAnalysis.comfortPicks = player.champions.slice(0, 10);
                     
-                    // Calculate ban scores for each champion
-                    player.champions.forEach(champion => {
-                        const championName = champion.name;
-                        let score = 0;
+                     // Calculate ban scores for each champion - ANGEPASST für Solo Queue only
+            player.champions.forEach(champion => {
+                const championName = champion.name;
+                let score = 0;
                         
-                        // Factor 1: Solo Queue Performance (max 30 points)
-                        const soloQGames = champion.games;
-                        const soloQWinRate = champion.winRate || 50;
+                        // Factor 1: Solo Queue Performance (wenn keine Prime Daten, dann mehr Gewicht)
+                const soloQGames = champion.games;
+                const soloQWinRate = champion.winRate || 50;
+                
+                if (analysis.hasPrimeData) {
+                    // Mit Prime League Daten - normale Gewichtung
+                    if (soloQGames >= 100) score += 15;
+                    else if (soloQGames >= 50) score += 10;
+                    else if (soloQGames >= 20) score += 5;
+                    
+                    if (soloQWinRate >= 65) score += 15;
+                    else if (soloQWinRate >= 60) score += 10;
+                    else if (soloQWinRate >= 55) score += 5;
+                } else {
+                    // Ohne Prime League - Solo Queue hat mehr Gewicht
+                    if (soloQGames >= 100) score += 30;
+                    else if (soloQGames >= 50) score += 25;
+                    else if (soloQGames >= 20) score += 15;
+                    else if (soloQGames >= 10) score += 10;
+                    
+                    if (soloQWinRate >= 65) score += 30;
+                    else if (soloQWinRate >= 60) score += 20;
+                    else if (soloQWinRate >= 55) score += 15;
+                    else if (soloQWinRate >= 52) score += 10;
+                    
+                    // Zusätzlicher Score für hohe KDA in Solo Queue
+                    if (champion.kda >= 4) score += 15;
+                    else if (champion.kda >= 3) score += 10;
+                    else if (champion.kda >= 2.5) score += 5;
+                    
+                    // One-Trick Bonus (wenn Spieler >30% seiner Games auf dem Champ hat)
+                    const totalGames = player.champions.reduce((sum, c) => sum + c.games, 0);
+                    const champPickRate = (soloQGames / totalGames) * 100;
+                    if (champPickRate >= 50) score += 20;
+                    else if (champPickRate >= 30) score += 15;
+                    else if (champPickRate >= 20) score += 10;
+                }
                         
-                        // Games played score (max 15 points)
-                        if (soloQGames >= 100) score += 15;
-                        else if (soloQGames >= 50) score += 10;
-                        else if (soloQGames >= 20) score += 5;
-                        
-                        // Win rate score (max 15 points)
-                        if (soloQWinRate >= 65) score += 15;
-                        else if (soloQWinRate >= 60) score += 10;
-                        else if (soloQWinRate >= 55) score += 5;
-                        
-                        // Factor 2: Prime League Performance (max 30 points)
-                        if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.champions[championName]) {
+                        if (analysis.hasPrimeData) {
+                    // Factor 2: Prime League Performance
+                    if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.champions[championName]) {
                             const primeGames = playerAnalysis.primeLeagueStats.champions[championName].games;
                             const totalPrimeGames = playerAnalysis.primeLeagueStats.games;
                             const primePickRate = (primeGames / totalPrimeGames) * 100;
@@ -2063,166 +2119,175 @@
                             else if (primeGames >= 1) score += 3;
                         }
                         
-                        // Factor 3: Ban Rate gegen Team (max 20 points)
-                        const banCount = analysis.banAnalysis.againstThem[championName] || 0;
-                        if (banCount >= 5) score += 20;
-                        else if (banCount >= 3) score += 15;
-                        else if (banCount >= 2) score += 10;
-                        else if (banCount >= 1) score += 5;
-                        
-                        // Factor 4: Pick Rate wenn offen (max 20 points)
-                        if (analysis.banOrPickPatterns[championName]) {
-                            const pickRate = analysis.banOrPickPatterns[championName].pickRate;
-                            if (pickRate === 100) score += 20;
-                            else if (pickRate >= 75) score += 15;
-                            else if (pickRate >= 50) score += 10;
-                            else if (pickRate >= 25) score += 5;
-                        }
-                        
-                        // Store the score with player info
-                        if (!championBanScores.has(championName) || championBanScores.get(championName).score < score) {
-                            championBanScores.set(championName, {
-                                score: score,
-                                player: player.name,
-                                soloQGames: soloQGames,
-                                soloQWinRate: soloQWinRate,
-                                primeGames: playerAnalysis.primeLeagueStats?.champions[championName]?.games || 0,
-                                banCount: banCount,
-                                pickRate: analysis.banOrPickPatterns[championName]?.pickRate || 0
-                            });
-                        }
-                    });
+                        // Factor 3: Ban Rate gegen Team
+                    const banCount = analysis.banAnalysis.againstThem[championName] || 0;
+                    if (banCount >= 5) score += 20;
+                    else if (banCount >= 3) score += 15;
+                    else if (banCount >= 2) score += 10;
+                    else if (banCount >= 1) score += 5;
                     
-                    // Solo Queue specific weaknesses
-                    if (player.winRate && player.winRate < 48) {
-                        playerAnalysis.notes.push(`Schwache Solo Queue Form (${player.winRate}% WR)`);
+                    // Factor 4: Pick Rate wenn offen
+                    if (analysis.banOrPickPatterns[championName]) {
+                        const pickRate = analysis.banOrPickPatterns[championName].pickRate;
+                        if (pickRate === 100) score += 20;
+                        else if (pickRate >= 75) score += 15;
+                        else if (pickRate >= 50) score += 10;
+                        else if (pickRate >= 25) score += 5;
                     }
-                    
-                    // No data fallback
-                    if (player.champions.length === 0) {
-                        playerAnalysis.notes.push('Keine Solo Queue Champion-Daten verfügbar');
-                    }
-                    
-                    // Pass through sorted champions
-                    playerAnalysis.champions = player.champions;
-                    
-                    analysis.players.push(playerAnalysis);
-                });
-                
-                // Generate ban recommendations based on scores
-                const sortedBanScores = Array.from(championBanScores.entries())
-                    .sort(([,a], [,b]) => b.score - a.score)
-                    .slice(0, 10); // Top 10 ban candidates
-                
-                sortedBanScores.forEach(([champion, data]) => {
-                    let priority = 'medium';
-                    let source = 'mixed';
-                    
-                    if (data.score >= 70) priority = 'very-high';
-                    else if (data.score >= 50) priority = 'high';
-                    
-                    // Determine source
-                    if (data.banCount > 0 && data.soloQGames > 20) source = 'both';
-                    else if (data.primeGames > 0 && data.soloQGames < 20) source = 'prime';
-                    else if (data.soloQGames > 20 && data.primeGames === 0) source = 'soloq';
-                    
-                    // Generate reason
-                    let reason = `${data.player}: `;
-                    const factors = [];
-                    
-                    if (data.soloQGames >= 50) {
-                        factors.push(`${data.soloQGames} SoloQ Spiele (${data.soloQWinRate}% WR)`);
-                    }
-                    
-                    if (data.primeGames > 0) {
-                        factors.push(`${data.primeGames}x in Prime League`);
-                    }
-                    
-                    if (data.banCount > 0) {
-                        factors.push(`${data.banCount}x gebannt`);
-                    }
-                    
-                    if (data.pickRate >= 50) {
-                        factors.push(`${data.pickRate}% Pick Rate wenn offen`);
-                    }
-                    
-                    reason += factors.join(', ');
-                    
-                    // Special case for must-ban champions
-                    if (data.pickRate === 100 && data.banCount >= 2) {
-                        reason = `MUSS gebannt werden! ${reason}`;
-                        priority = 'very-high';
-                    }
-                    
-                    analysis.banRecommendations.push({
-                        champion: champion,
-                        reason: reason,
-                        priority: priority,
-                        source: source,
-                        score: data.score // For debugging
-                    });
-                });
-                
-                // Remove the old duplicate-removal code since we now have better logic
-                // Sort ban recommendations by priority and score
-                analysis.banRecommendations.sort((a, b) => {
-                    const priorityOrder = { 'very-high': 0, 'high': 1, 'medium': 2, 'low': 3 };
-                    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-                    if (priorityDiff !== 0) return priorityDiff;
-                    // If same priority, sort by score
-                    return (b.score || 0) - (a.score || 0);
-                });
-                
-                // Check for mental boom patterns
-                const mentalBoomPlayers = [];
-                if (analysis.primeLeagueStats) {
-                    Object.entries(analysis.primeLeagueStats).forEach(([playerName, stats]) => {
-                        const avgDeaths = stats.totalDeaths / stats.games;
-                        if (avgDeaths > 7) {
-                            mentalBoomPlayers.push(`${playerName} (${avgDeaths.toFixed(1)} Deaths/Game)`);
-                        }
-                    });
                 }
                 
-                if (mentalBoomPlayers.length > 0) {
-                    analysis.strategies.push({
-                        title: 'Mental Boom Targets',
-                        description: 'Diese Spieler sterben oft und tilten möglicherweise',
-                        details: mentalBoomPlayers
+                // Store the score with player info
+                if (!championBanScores.has(championName) || championBanScores.get(championName).score < score) {
+                    championBanScores.set(championName, {
+                        score: score,
+                        player: player.name,
+                        soloQGames: soloQGames,
+                        soloQWinRate: soloQWinRate,
+                        kda: champion.kda || 0,
+                        primeGames: playerAnalysis.primeLeagueStats?.champions[championName]?.games || 0,
+                        banCount: analysis.banAnalysis.againstThem[championName] || 0,
+                        pickRate: analysis.banOrPickPatterns[championName]?.pickRate || 0
                     });
                 }
+            });
+            
+            analysis.players.push(playerAnalysis);
+        });
+        
+        // Generate ban recommendations
+        const sortedBanScores = Array.from(championBanScores.entries())
+            .sort(([,a], [,b]) => b.score - a.score)
+            .slice(0, 10);
+        
+        sortedBanScores.forEach(([champion, data]) => {
+            let priority = 'medium';
+            let source = 'soloq';
+            
+            if (analysis.hasPrimeData) {
+                if (data.score >= 70) priority = 'very-high';
+                else if (data.score >= 50) priority = 'high';
                 
-                // Analyze champion pool flexibility
-                const flexibilityAnalysis = [];
-                analysis.players.forEach(player => {
-                    if (player.isOTP) {
-                        flexibilityAnalysis.push(`${player.name}: One-Trick (${player.championPoolSize} Champs) - Ban ${player.comfortPicks[0].name} = Win`);
-                    } else if (player.championPoolSize <= 3) {
-                        flexibilityAnalysis.push(`${player.name}: Sehr kleiner Pool (${player.championPoolSize} Champs) - leicht auszubannen`);
-                    }
-                });
-                
-                if (flexibilityAnalysis.length > 0) {
-                    analysis.strategies.push({
-                        title: 'Champion Pool Schwächen',
-                        description: 'Spieler mit begrenztem Champion Pool',
-                        details: flexibilityAnalysis
-                    });
+                if (data.banCount > 0 && data.soloQGames > 20) source = 'both';
+                else if (data.primeGames > 0 && data.soloQGames < 20) source = 'prime';
+            } else {
+                // Ohne Prime League - angepasste Schwellenwerte
+                if (data.score >= 60) priority = 'very-high';
+                else if (data.score >= 40) priority = 'high';
+                else if (data.score >= 25) priority = 'medium';
+            }
+            
+            // Generate reason
+            let reason = `${data.player}: `;
+            const factors = [];
+            
+            if (data.soloQGames >= 50) {
+                factors.push(`${data.soloQGames} SoloQ Spiele (${data.soloQWinRate}% WR)`);
+            }
+            
+            if (data.kda > 0 && !analysis.hasPrimeData) {
+                factors.push(`${data.kda.toFixed(1)} KDA`);
+            }
+            
+            if (analysis.hasPrimeData) {
+                if (data.primeGames > 0) {
+                    factors.push(`${data.primeGames}x in Prime League`);
                 }
                 
-
+                if (data.banCount > 0) {
+                    factors.push(`${data.banCount}x gebannt`);
+                }
                 
-            } catch (error) {
-                console.error('Error in analyzePlayerData:', error);
+                if (data.pickRate >= 50) {
+                    factors.push(`${data.pickRate}% Pick Rate wenn offen`);
+                }
+            }
+            
+            reason += factors.join(', ');
+            
+            analysis.banRecommendations.push({
+                champion: champion,
+                reason: reason,
+                priority: priority,
+                source: source,
+                score: data.score
+            });
+        });
+        
+        // Sort ban recommendations
+        analysis.banRecommendations.sort((a, b) => {
+            const priorityOrder = { 'very-high': 0, 'high': 1, 'medium': 2, 'low': 3 };
+            const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+            if (priorityDiff !== 0) return priorityDiff;
+            return (b.score || 0) - (a.score || 0);
+        });
+        
+        // Strategies für Solo Queue Only
+        if (!analysis.hasPrimeData) {
+            // One-Trick Analyse
+            const oneTrickTargets = [];
+            analysis.players.forEach(player => {
+                if (player.isOTP && player.comfortPicks.length > 0) {
+                    const mainChamp = player.comfortPicks[0];
+                    oneTrickTargets.push(`${player.name}: ${mainChamp.name} (${mainChamp.games} Games, ${mainChamp.winRate}% WR) - Ban = Win`);
+                }
+            });
+            
+            if (oneTrickTargets.length > 0) {
                 analysis.strategies.push({
-                    title: 'Analyse-Fehler',
-                    description: 'Ein Fehler ist bei der Analyse aufgetreten',
-                    details: ['Bitte überprüfe die hochgeladenen Dateien']
+                    title: 'One-Trick Targets',
+                    description: 'Diese Spieler sind auf einen Champion fokussiert',
+                    details: oneTrickTargets
                 });
             }
             
-            return analysis;
+            // Small Champion Pool Analyse
+            const smallPoolPlayers = [];
+            analysis.players.forEach(player => {
+                if (!player.isOTP && player.championPoolSize <= 3 && player.championPoolSize > 0) {
+                    const topChamps = player.comfortPicks.slice(0, 3).map(c => c.name).join(', ');
+                    smallPoolPlayers.push(`${player.name}: Nur ${player.championPoolSize} Champions (${topChamps})`);
+                }
+            });
+            
+            if (smallPoolPlayers.length > 0) {
+                analysis.strategies.push({
+                    title: 'Kleine Champion Pools',
+                    description: 'Diese Spieler haben einen sehr begrenzten Champion Pool',
+                    details: smallPoolPlayers
+                });
+            }
+            
+            // High Performer Analyse
+            const highPerformers = [];
+            analysis.players.forEach(player => {
+                const highWRChamps = player.champions.filter(c => c.games >= 10 && c.winRate >= 60);
+                if (highWRChamps.length > 0) {
+                    highWRChamps.slice(0, 2).forEach(champ => {
+                        highPerformers.push(`${player.name} auf ${champ.name}: ${champ.winRate}% WR über ${champ.games} Spiele`);
+                    });
+                }
+            });
+            
+            if (highPerformers.length > 0) {
+                analysis.strategies.push({
+                    title: 'High Performance Champions',
+                    description: 'Champions mit besonders hohen Win Rates',
+                    details: highPerformers
+                });
+            }
         }
+        
+    } catch (error) {
+        console.error('Error in analyzePlayerData:', error);
+        analysis.strategies.push({
+            title: 'Analyse-Fehler',
+            description: 'Ein Fehler ist bei der Analyse aufgetreten',
+            details: ['Bitte überprüfe die hochgeladenen Dateien']
+        });
+    }
+    
+    return analysis;
+}
         
         function displayResults(analysis) {
             if (!analysis || !analysis.players || analysis.players.length === 0) {
