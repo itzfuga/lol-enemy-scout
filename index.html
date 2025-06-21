@@ -1,0 +1,2968 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL Enemy Scouting Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0e1a;
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(200, 155, 60, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(200, 155, 60, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(0, 150, 255, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #c89b3c 0%, #f0e6d2 50%, #c89b3c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            font-size: 3.5em;
+            font-weight: 700;
+            text-shadow: 
+                0 0 30px rgba(200, 155, 60, 0.5),
+                0 0 60px rgba(200, 155, 60, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        .subtitle a {
+            color: #c89b3c;
+            text-decoration: none;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .subtitle a:hover {
+            color: #f0e6d2;
+            text-shadow: 0 0 10px rgba(200, 155, 60, 0.8);
+        }
+
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+
+        .upload-section {
+            background: rgba(30, 35, 40, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(200, 155, 60, 0.3);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent,
+                rgba(200, 155, 60, 0.05),
+                transparent
+            );
+            transform: rotate(45deg);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .upload-box {
+            border: 2px dashed rgba(200, 155, 60, 0.6);
+            padding: 50px;
+            text-align: center;
+            margin: 15px 0;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(42, 45, 51, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-box::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(200, 155, 60, 0.2) 0%, transparent 70%);
+            transition: all 0.5s;
+            transform: translate(-50%, -50%);
+        }
+
+        .upload-box:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .upload-box:hover {
+            transform: translateY(-5px);
+            border-color: #f0e6d2;
+            box-shadow: 
+                0 10px 25px rgba(200, 155, 60, 0.3),
+                inset 0 0 20px rgba(200, 155, 60, 0.1);
+        }
+
+        .upload-box.active {
+            background: linear-gradient(135deg, rgba(42, 63, 42, 0.6) 0%, rgba(30, 50, 30, 0.6) 100%);
+            border-color: #00ff00;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 0, 0.3),
+                inset 0 0 20px rgba(0, 255, 0, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 255, 0, 0.6); }
+            100% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); }
+        }
+
+        .upload-box p {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-box small {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #c89b3c 0%, #f0e6d2 100%);
+            color: #0a0e1a;
+            border: none;
+            padding: 18px 45px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(200, 155, 60, 0.4);
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(200, 155, 60, 0.6);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: linear-gradient(135deg, #3c4043 0%, #2a2d33 100%);
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        button:disabled::before {
+            display: none;
+        }
+
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .team-overview {
+            background: rgba(30, 35, 40, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(200, 155, 60, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .threat-bar {
+            width: 100%;
+            height: 40px;
+            background: rgba(42, 45, 51, 0.8);
+            border-radius: 20px;
+            margin: 15px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .threat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #00ff00 0%, 
+                #90ff00 25%, 
+                #ffff00 50%, 
+                #ff9000 75%, 
+                #ff0000 100%);
+            border-radius: 20px;
+            transition: width 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .threat-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        .player-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .player-card {
+            background: rgba(30, 35, 40, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(60, 64, 67, 0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #c89b3c, #f0e6d2);
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .player-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .player-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(200, 155, 60, 0.5);
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(200, 155, 60, 0.1);
+        }
+
+        .player-card h3 {
+            color: #f0e6d2;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .champion-list {
+            margin: 20px 0;
+        }
+
+        .champion-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 8px 0;
+            background: rgba(42, 45, 51, 0.5);
+            border-radius: 10px;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .champion-item:hover {
+            background: rgba(42, 45, 51, 0.8);
+            transform: translateX(5px);
+            border-color: rgba(200, 155, 60, 0.3);
+        }
+
+        .champion-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+        }
+
+        .champion-stats span {
+            padding: 2px 8px;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .winrate-high {
+            color: #4eff4e;
+            text-shadow: 0 0 5px rgba(78, 255, 78, 0.5);
+        }
+
+        .winrate-medium {
+            color: #ffff4e;
+            text-shadow: 0 0 5px rgba(255, 255, 78, 0.5);
+        }
+
+        .winrate-low {
+            color: #ff4e4e;
+            text-shadow: 0 0 5px rgba(255, 78, 78, 0.5);
+        }
+
+        .recommendations {
+            background: rgba(30, 35, 40, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid rgba(200, 155, 60, 0.5);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .recommendations::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #c89b3c, #f0e6d2, #c89b3c);
+            opacity: 0.8;
+        }
+
+        .recommendations h2 {
+            color: #f0e6d2;
+            margin-bottom: 25px;
+            font-size: 2em;
+            font-weight: 700;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .recommendations h3 {
+            color: #f0e6d2;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .ban-list, .strategy-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .ban-list li, .strategy-list li {
+            background: rgba(20, 23, 28, 0.8);
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 12px;
+            border-left: 5px solid #c89b3c;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            color: #f0f0f0;
+        }
+
+        .ban-list li strong, .strategy-list li strong {
+            color: #f0e6d2;
+            font-weight: 700;
+        }
+
+        .ban-list li p, .strategy-list li p {
+            color: #e0e0e0;
+            margin-top: 5px;
+        }
+
+        .ban-list li ul li, .strategy-list li ul li {
+            color: #d0d0d0;
+            background: none;
+            border: none;
+            padding: 2px 0;
+            margin: 2px 0;
+        }
+
+        .ban-list li::before, .strategy-list li::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(200, 155, 60, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .ban-list li:hover::before, .strategy-list li:hover::before {
+            left: 100%;
+        }
+
+        .ban-list li:hover, .strategy-list li:hover {
+            transform: translateX(10px);
+            background: rgba(25, 28, 33, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border-left-color: #f0e6d2;
+        }
+
+        .priority-high {
+            border-left-color: #ff4e4e !important;
+            background: rgba(40, 20, 20, 0.8) !important;
+        }
+
+        .priority-medium {
+            border-left-color: #ffff4e !important;
+            background: rgba(40, 40, 20, 0.8) !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 80px;
+            font-size: 1.5em;
+            color: #c89b3c;
+            position: relative;
+        }
+
+        .loading::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            margin: -30px 0 0 -30px;
+            border: 3px solid transparent;
+            border-top-color: #c89b3c;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: linear-gradient(135deg, rgba(63, 32, 32, 0.8) 0%, rgba(47, 24, 24, 0.8) 100%);
+            border: 2px solid #ff0000;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 12px;
+            background: rgba(60, 64, 67, 0.6);
+            border-radius: 6px;
+            font-size: 0.85em;
+            margin: 3px;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .tag.mental-weak {
+            background: rgba(107, 32, 32, 0.6);
+            color: #ff6b6b;
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .tag.consistent {
+            background: rgba(32, 107, 32, 0.6);
+            color: #6bff6b;
+            border-color: rgba(107, 255, 107, 0.3);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+            border-top: 1px solid rgba(200, 155, 60, 0.2);
+            color: #666;
+        }
+
+        .footer a {
+            color: #c89b3c;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            color: #f0e6d2;
+            text-shadow: 0 0 10px rgba(200, 155, 60, 0.8);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 35, 40, 0.8);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #c89b3c 0%, #f0e6d2 100%);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #f0e6d2 0%, #c89b3c 100%);
+        }
+
+        /* Details/Summary styling */
+        details {
+            cursor: pointer;
+        }
+
+        details summary {
+            outline: none;
+            padding: 5px;
+            transition: all 0.3s;
+        }
+
+        details summary:hover {
+            color: #f0e6d2;
+        }
+
+        details[open] summary {
+            margin-bottom: 10px;
+            color: #f0e6d2;
+        }
+
+        /* All h2 styling */
+        h2 {
+            color: #f0e6d2;
+            margin-bottom: 20px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        h3 {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        h4 {
+            font-weight: 600;
+        }
+
+        /* Animation for elements appearing */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .player-card, .team-overview, .recommendations {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            .upload-section {
+                padding: 25px;
+            }
+            
+            .upload-box {
+                padding: 30px;
+            }
+            
+            .player-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            button {
+                padding: 15px 30px;
+                font-size: 16px;
+            }
+        }
+
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            background: rgba(20, 23, 28, 0.8);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+        }
+
+        table td, table th {
+            padding: 10px;
+        }
+
+        table tbody tr:hover {
+            background: rgba(200, 155, 60, 0.1);
+        }
+
+        /* Fallback Pattern styling */
+        .strategy-list .fallback-player-box {
+            background: rgba(10, 13, 18, 0.8);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 3px solid #c89b3c;
+        }
+
+        /* Glow effect for important elements */
+        .upload-box.active::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            background: linear-gradient(45deg, transparent, #00ff00, transparent);
+            border-radius: 15px;
+            opacity: 0;
+            z-index: -1;
+            animation: glowEffect 2s linear infinite;
+        }
+
+        @keyframes glowEffect {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 LoL Enemy Scouting Tool</h1>
+        <p class="subtitle">by <a href="https://discord.com/users/itzfuga" target="_blank">iTzFuga</a> | Discord: itzfuga</p>
+        
+        <div class="upload-section">
+            <h2 style="text-align: center; margin-bottom: 30px;">📁 Dateien hochladen</h2>
+            
+            <div class="upload-box" id="opggUpload">
+                <input type="file" id="opggFile" accept=".html">
+                <p>OP.GG Multi-Search HTML hier ablegen</p>
+                <small>oder klicken zum Auswählen</small>
+            </div>
+            
+            <div class="upload-box" id="primeUpload">
+                <input type="file" id="primeFile" accept=".html" multiple>
+                <p>Prime League Match HTML(s) hier ablegen</p>
+                <small>oder klicken zum Auswählen (mehrere möglich)</small>
+            </div>
+            
+            <button id="analyzeBtn" disabled>🔍 Gegner analysieren</button>
+            
+            <div id="exportButtons" style="display: none; margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="pdfBtn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); font-size: 16px; padding: 12px 30px;" onclick="generatePDF()">
+                    📄 PDF Report
+                </button>
+                <button id="discordBtn" style="background: linear-gradient(135deg, #7289da 0%, #5865f2 100%); font-size: 16px; padding: 12px 30px;" onclick="copyToDiscord()">
+                    💬 Discord Copy
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="debugBtn" style="background: linear-gradient(135deg, #666 0%, #888 100%); font-size: 14px; padding: 10px 25px;" onclick="toggleDebug()">
+                    🔧 Debug Mode
+                </button>
+                <button id="testExtractBtn" style="background: linear-gradient(135deg, #666 0%, #888 100%); font-size: 14px; padding: 10px 25px;" onclick="testExtraction()" disabled>
+                    🧪 Test Extraction
+                </button>
+            </div>
+        </div>
+        
+        <div class="results-section" id="results">
+            <div class="loading" id="loading" style="display: none;">
+                ⏳ Analysiere Daten...
+            </div>
+            
+            <div id="analysisResults"></div>
+        </div>
+        
+        <div class="footer">
+            <p>Made with ❤️ by <a href="https://discord.com/users/itzfuga" target="_blank">iTzFuga</a></p>
+            <p>Discord: itzfuga | Für Feedback und Verbesserungsvorschläge</p>
+        </div>
+    </div>
+
+    <script>
+        // File Upload Handler
+        const opggUpload = document.getElementById('opggUpload');
+        const primeUpload = document.getElementById('primeUpload');
+        const opggFile = document.getElementById('opggFile');
+        const primeFile = document.getElementById('primeFile');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultsSection = document.getElementById('results');
+        const loadingDiv = document.getElementById('loading');
+        const analysisResults = document.getElementById('analysisResults');
+        
+        let opggData = null;
+        let primeData = [];
+        let debugMode = false;
+        let teamPlayerNames = []; // Speichert die Namen aus OP.GG
+        let currentAnalysis = null; // WICHTIG: Global definiert für Export-Funktionen
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            console.log('Debug mode:', debugMode ? 'ON' : 'OFF');
+            if (debugMode) {
+                alert('Debug Mode aktiviert! Öffne die Browser-Konsole (F12) um Details zu sehen.');
+            }
+        }
+        
+        function testExtraction() {
+            if (!opggData) {
+                alert('Bitte erst OP.GG Datei hochladen!');
+                return;
+            }
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(opggData, 'text/html');
+            
+            console.log('=== TEST EXTRACTION START ===');
+            console.log('Team Spieler gefunden:', teamPlayerNames);
+            
+            // Find all images with alt text
+            const allImages = doc.querySelectorAll('img[alt]');
+            console.log(`Found ${allImages.length} images with alt text`);
+            
+            const championNames = new Set();
+            allImages.forEach(img => {
+                if (img.alt && img.alt.length > 1 && img.alt.length < 20) {
+                    championNames.add(img.alt);
+                }
+            });
+            console.log('Unique champion names found:', Array.from(championNames));
+            
+            alert(`Test abgeschlossen! ${teamPlayerNames.length} Team-Spieler gefunden. Öffne die Konsole (F12) für Details.`);
+            console.log('=== TEST EXTRACTION END ===');
+        }
+        
+        opggUpload.addEventListener('click', () => opggFile.click());
+        primeUpload.addEventListener('click', () => primeFile.click());
+        
+        opggFile.addEventListener('change', handleOPGGUpload);
+        primeFile.addEventListener('change', handlePrimeUpload);
+        analyzeBtn.addEventListener('click', analyzeData);
+        
+        async function handleOPGGUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                opggData = await file.text();
+                
+                // Extrahiere Spielernamen sofort
+                const players = extractOPGGData(opggData);
+                teamPlayerNames = players.map(p => p.name);
+                
+                console.log('Team gefunden:', teamPlayerNames);
+                
+                opggUpload.classList.add('active');
+                opggUpload.querySelector('p').textContent = `✅ ${file.name} geladen (${teamPlayerNames.length} Spieler gefunden)`;
+                document.getElementById('testExtractBtn').disabled = false;
+                checkAnalyzeButton();
+            }
+        }
+        
+        async function handlePrimeUpload(e) {
+            const files = Array.from(e.target.files);
+            primeData = [];
+            for (const file of files) {
+                const content = await file.text();
+                primeData.push(content);
+            }
+            if (files.length > 0) {
+                primeUpload.classList.add('active');
+                primeUpload.querySelector('p').textContent = `✅ ${files.length} Match(es) geladen`;
+                checkAnalyzeButton();
+            }
+        }
+        
+        function checkAnalyzeButton() {
+            if (opggData && primeData.length > 0) {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = `🔍 ${teamPlayerNames.length} Spieler analysieren`;
+            } else if (opggData) {
+                analyzeBtn.disabled = true;
+                analyzeBtn.textContent = '⏳ Warte auf Prime League Daten...';
+            } else {
+                analyzeBtn.disabled = true;
+                analyzeBtn.textContent = '🔍 Gegner analysieren';
+            }
+        }
+        
+        // Data Extraction Functions
+        function extractOPGGData(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const players = [];
+            
+            try {
+                // Try different selectors for player sections
+                let playerSections = doc.querySelectorAll('.w-\\[20\\%\\]');
+                if (playerSections.length === 0) {
+                    playerSections = doc.querySelectorAll('[class*="border-gray-200"]');
+                }
+                
+                console.log(`Found ${playerSections.length} player sections`);
+                
+                playerSections.forEach((section, index) => {
+                    try {
+                        const playerData = {
+                            name: '',
+                            tag: '',
+                            rank: '',
+                            lp: 0,
+                            winRate: 0,
+                            recentForm: '',
+                            champions: [],
+                            lastUpdate: '',
+                            mentalState: 'stable',
+                            streak: ''
+                        };
+                        
+                        // Try multiple selectors for player name
+                        let nameElement = section.querySelector('a[href*="/summoners/"] span:first-child');
+                        if (!nameElement) {
+                            nameElement = section.querySelector('.text-gray-900');
+                        }
+                        if (nameElement) {
+                            playerData.name = nameElement.textContent.trim();
+                        }
+                        
+                        // Extract tag
+                        const tagElement = section.querySelector('.text-gray-500');
+                        if (tagElement && tagElement.textContent.includes('#')) {
+                            playerData.tag = tagElement.textContent.trim();
+                        }
+                        
+                        // Extract rank
+                        const rankElement = section.querySelector('.capitalize.text-gray-600') || 
+                                           section.querySelector('[class*="capitalize"]');
+                        if (rankElement) {
+                            const rankText = rankElement.textContent.trim();
+                            // Updated regex to capture rank AND division
+                            const rankMatch = rankText.match(/(\w+)(?:\s+(\d+))?\s*\((\d+)\s*LP\)/i);
+                            if (rankMatch) {
+                                const rankName = rankMatch[1];
+                                const division = rankMatch[2];
+                                
+                                // Special handling for Master/Grandmaster/Challenger (no divisions)
+                                if (['Master', 'Grandmaster', 'Challenger'].includes(rankName)) {
+                                    playerData.rank = rankName;
+                                } else if (division) {
+                                    playerData.rank = `${rankName} ${division}`;
+                                } else {
+                                    playerData.rank = rankName;
+                                }
+                                
+                                playerData.lp = parseInt(rankMatch[3]) || 0;
+                            }
+                        }
+                        
+                        // Extract win rate
+                        const allTexts = section.querySelectorAll('span');
+                        allTexts.forEach(span => {
+                            const text = span.textContent.trim();
+                            if (text.match(/^\d+%$/) && !playerData.winRate) {
+                                playerData.winRate = parseInt(text);
+                            }
+                        });
+                        
+                        // Extract champions from all possible locations
+                        const findChampionStats = () => {
+                            // Method 1: Direct stats extraction
+                            const statsSection = section.querySelector('.bg-gray-100');
+                            if (statsSection) {
+                                const championRows = statsSection.querySelectorAll('li');
+                                championRows.forEach(row => {
+                                    const img = row.querySelector('img[alt]');
+                                    if (img && img.alt && !img.alt.includes('OP.GG')) {
+                                        const text = row.textContent || '';
+                                        
+                                        // Look for pattern like "3.15:1 KDA 66 62%"
+                                        const kdaMatch = text.match(/(\d+\.?\d*):1/);
+                                        const numbersAfterKDA = text.match(/(\d+)\s+(\d+)%/);
+                                        
+                                        if (numbersAfterKDA) {
+                                            const games = parseInt(numbersAfterKDA[1]) || 0;
+                                            const winRate = parseInt(numbersAfterKDA[2]) || 0;
+                                            const kda = kdaMatch ? parseFloat(kdaMatch[1]) : 0;
+                                            
+                                            if (games > 0 && games < 500 && !playerData.champions.find(c => c.name === img.alt)) {
+                                                playerData.champions.push({
+                                                    name: img.alt,
+                                                    games: games,
+                                                    winRate: winRate,
+                                                    kda: kda
+                                                });
+                                                if (debugMode) console.log(`Added champion: ${img.alt} - ${games}g, ${winRate}%`);
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            // Method 2: Try flex layouts
+                            const flexItems = section.querySelectorAll('.flex.w-\\[180px\\]');
+                            flexItems.forEach(item => {
+                                const img = item.querySelector('img[alt]');
+                                const kdaDiv = item.querySelector('[data-tooltip-content*="KDA"]');
+                                const spans = item.querySelectorAll('span');
+                                
+                                if (img && img.alt && spans.length >= 2) {
+                                    let games = 0, winRate = 0, kda = 0;
+                                    
+                                    spans.forEach((span, idx) => {
+                                        const text = span.textContent.trim();
+                                        if (idx === spans.length - 2 && /^\d+$/.test(text)) {
+                                            games = parseInt(text);
+                                        } else if (idx === spans.length - 1 && text.endsWith('%')) {
+                                            winRate = parseInt(text);
+                                        }
+                                    });
+                                    
+                                    if (kdaDiv) {
+                                        const kdaMatch = kdaDiv.textContent.match(/(\d+\.?\d*):1/);
+                                        kda = kdaMatch ? parseFloat(kdaMatch[1]) : 0;
+                                    }
+                                    
+                                    if (games > 0 && !playerData.champions.find(c => c.name === img.alt)) {
+                                        playerData.champions.push({
+                                            name: img.alt,
+                                            games: games,
+                                            winRate: winRate,
+                                            kda: kda
+                                        });
+                                    }
+                                }
+                            });
+                        };
+                        
+                        findChampionStats();
+                        
+                        // Extract streak information
+                        const streakElements = section.querySelectorAll('.bg-red-500, .bg-main-500');
+                        streakElements.forEach(elem => {
+                            const text = elem.textContent.trim();
+                            if (text.includes('Spiel') || text.includes('Game')) {
+                                playerData.streak = text;
+                                if (text.includes('verloren') || text.includes('lost') || elem.classList.contains('bg-red-500')) {
+                                    playerData.mentalState = 'tilted';
+                                }
+                            }
+                        });
+                        
+                        // Only add player if we found a name
+                        if (playerData.name) {
+                            console.log(`Extracted player: ${playerData.name}`, playerData);
+                            players.push(playerData);
+                        }
+                    } catch (playerError) {
+                        console.error(`Error extracting player ${index}:`, playerError);
+                    }
+                });
+            } catch (error) {
+                console.error('Error in extractOPGGData:', error);
+            }
+            
+            console.log(`Total players extracted: ${players.length}`);
+            return players;
+        }
+        
+        function extractPrimeLeagueData(htmlArray) {
+            const matches = [];
+            
+            htmlArray.forEach((html, fileIndex) => {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const matchData = {
+                        matchNumber: fileIndex + 1,
+                        teams: [],
+                        score: '',
+                        date: '',
+                        games: []
+                    };
+                    
+                    // Get teams
+                    const teamNames = doc.querySelectorAll('.content-match-head-team h2, h2');
+                    teamNames.forEach(team => {
+                        const name = team.textContent.trim();
+                        if (name && name.length > 0 && name.length <= 30) { // Increased limit for team names
+                            matchData.teams.push(name);
+                        }
+                    });
+                    
+                    // Alternative team extraction if not found
+                    if (matchData.teams.length < 2) {
+                        const teamElements = doc.querySelectorAll('.submatch-lol-team-name');
+                        const uniqueTeams = new Set();
+                        teamElements.forEach(elem => {
+                            const teamName = elem.textContent.trim();
+                            if (teamName && teamName.length > 0) {
+                                uniqueTeams.add(teamName);
+                            }
+                        });
+                        matchData.teams = Array.from(uniqueTeams);
+                    }
+                    
+                    if (debugMode) {
+                        console.log(`Match ${fileIndex + 1} teams found:`, matchData.teams);
+                    }
+                    
+                    // Get score
+                    const scoreElement = doc.querySelector('.txt-score');
+                    if (scoreElement) {
+                        matchData.score = scoreElement.textContent.trim();
+                    }
+                    
+                    // Get date
+                    const dateElement = doc.querySelector('.tztime');
+                    if (dateElement) {
+                        matchData.date = dateElement.textContent.trim();
+                    }
+                    
+                    // Extract individual games
+                    const gameBlocks = doc.querySelectorAll('.section-block.content-match-submatch-lol');
+                    
+                    gameBlocks.forEach((gameBlock, gameIndex) => {
+                        const gameData = {
+                            gameNumber: gameIndex + 1,
+                            duration: '',
+                            winner: '',
+                            objectives: {},
+                            bans: { team1: [], team2: [] },
+                            picks: {},
+                            playerStats: {}
+                        };
+                        
+                        // Get game duration
+                        const durationRows = gameBlock.querySelectorAll('li');
+                        durationRows.forEach(row => {
+                            const label = row.querySelector('.qi-label');
+                            if (label && label.textContent.includes('Dauer')) {
+                                const value = row.querySelector('.qi-value');
+                                if (value) {
+                                    gameData.duration = value.textContent.trim();
+                                }
+                            }
+                        });
+                        
+                        // Determine winner
+                        const winElements = gameBlock.querySelectorAll('.win');
+                        winElements.forEach(elem => {
+                            const teamSection = elem.closest('.submatch-lol-head-side');
+                            if (teamSection) {
+                                const teamName = teamSection.querySelector('.submatch-lol-team-name');
+                                if (teamName) {
+                                    gameData.winner = teamName.textContent.trim();
+                                    if (debugMode) console.log(`Game ${gameIndex + 1} winner: ${gameData.winner}`);
+                                }
+                            }
+                        });
+                        
+                        // Extract bans
+                        const banSections = gameBlock.querySelectorAll('.submatch-lol-base-side');
+                        banSections.forEach((section, idx) => {
+                            const banImages = section.querySelectorAll('.submatch-lol-bans img');
+                            const bans = [];
+                            banImages.forEach(img => {
+                                if (img.alt) bans.push(img.alt);
+                            });
+                            if (idx === 0) gameData.bans.team1 = bans;
+                            else gameData.bans.team2 = bans;
+                            
+                            if (debugMode && bans.length > 0) {
+                                console.log(`Game ${gameIndex + 1}, Team ${idx + 1} bans:`, bans);
+                            }
+                            
+                            // Extract objectives
+                            const objectives = section.querySelectorAll('.submatch-lol-objectives span');
+                            const objData = {};
+                            objectives.forEach((obj, i) => {
+                                const value = parseInt(obj.textContent) || 0;
+                                if (i === 0) objData.towers = value;
+                                else if (i === 1) objData.inhibitors = value;
+                                else if (i === 2) objData.barons = value;
+                                else if (i === 3) objData.dragons = value;
+                                else if (i === 4) objData.heralds = value;
+                            });
+                            
+                            if (idx === 0) gameData.objectives.team1 = objData;
+                            else gameData.objectives.team2 = objData;
+                        });
+                        
+                        // Extract player performance - für ALLE Spieler (für Matchup-Analyse)
+                        const allPlayerStats = {};
+                        const positionNames = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+                        const playerRows = gameBlock.querySelectorAll('.submatch-lol-player');
+                        let playerPosition = 0;
+                        
+                        playerRows.forEach(row => {
+                            const nameElem = row.querySelector('.submatch-lol-player-name');
+                            if (nameElem) {
+                                const fullPlayerName = nameElem.textContent.trim();
+                                const playerName = fullPlayerName.split('#')[0].replace(/^ABL\s+/, '');
+                                
+                                const championImg = row.querySelector('.img-player-hero');
+                                const kdaElem = row.querySelector('.submatch-lol-player-kda');
+                                const levelElem = row.querySelector('.player-hero-level');
+                                
+                                if (championImg && kdaElem) {
+                                    const side = playerPosition < 5 ? 'side1' : 'side2';
+                                    const position = playerPosition % 5; // 0=Top, 1=Jungle, 2=Mid, 3=ADC, 4=Support
+                                    
+                                    const playerStat = {
+                                        champion: championImg.alt || 'Unknown',
+                                        kda: kdaElem.textContent.trim(),
+                                        level: levelElem ? parseInt(levelElem.textContent) : 0,
+                                        side: side,
+                                        position: position,
+                                        fullName: fullPlayerName
+                                    };
+                                    
+                                    // Für Team-Spieler speichern
+                                    if (teamPlayerNames.some(teamName => 
+                                        playerName.includes(teamName) || 
+                                        teamName.includes(playerName) ||
+                                        fullPlayerName.includes(teamName)
+                                    )) {
+                                        gameData.playerStats[playerName] = {
+                                            ...playerStat,
+                                            position: position,
+                                            side: side  // Speichere die Side Information
+                                        };
+                                        gameData.picks[playerName] = championImg.alt || 'Unknown';
+                                    }
+                                    
+                                    // Alle Spieler für Matchup-Analyse speichern
+                                    allPlayerStats[`${side}_${position}`] = playerStat;
+                                }
+                                
+                                playerPosition++;
+                            }
+                        });
+                        
+                        // Matchup-Daten hinzufügen
+                        gameData.allPlayerStats = allPlayerStats;
+                        
+                        matchData.games.push(gameData);
+                    });
+                    
+                    if (matchData.games.length > 0) {
+                        matches.push(matchData);
+                        console.log(`Extracted Prime League match ${fileIndex + 1}:`, matchData);
+                    }
+                    
+                } catch (error) {
+                    console.error(`Error parsing Prime League file ${fileIndex}:`, error);
+                }
+            });
+            
+            return matches;
+        }
+        
+        function analyzePlayerData(opggPlayers, primeMatches) {
+            const analysis = {
+                players: [],
+                teamWeaknesses: [],
+                banRecommendations: [],
+                strategies: [],
+                primeLeaguePerformance: [],
+                banAnalysis: {
+                    againstThem: {},
+                    byThem: {}
+                },
+                pickPatterns: {},
+                flexPicks: {},
+                championHistory: {},
+                banOrPickPatterns: {} // NEU!
+            };
+            
+            try {
+                // First, analyze Prime League data
+                if (primeMatches && primeMatches.length > 0) {
+                    let totalGamesWon = 0;
+                    let totalGamesPlayed = 0;
+                    const playerPrimeStats = {};
+                    const championsPlayedInPrime = {};
+                    const bansAgainstTeam = {};
+                    const bansByTeam = {};
+                    const pickHistory = {};
+                    
+                    primeMatches.forEach(match => {
+                        if (debugMode) {
+                            console.log(`\n=== Analyzing Match ${match.matchNumber} ===`);
+                            console.log('Teams:', match.teams);
+                            console.log('Score:', match.score);
+                        }
+                        
+                        match.games.forEach((game, gameIdx) => {
+                            totalGamesPlayed++;
+                            
+                            // Check if team won - basierend auf den Team-Spielern
+                            const teamPlayersInGame = Object.keys(game.playerStats || {}).filter(playerName => {
+                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                                return teamPlayerNames.some(teamName => 
+                                    normalizedName.includes(teamName) || 
+                                    teamName.includes(normalizedName)
+                                );
+                            });
+                            
+                            if (teamPlayersInGame.length > 0) {
+                                // Debug logging
+                                if (debugMode) {
+                                    console.log(`\nGame ${gameIdx + 1}:`);
+                                    console.log('Team players found:', teamPlayersInGame);
+                                    console.log('Available teams:', match.teams);
+                                    console.log('Winner:', game.winner);
+                                }
+                                
+                                // Finde heraus auf welcher Seite das Team gespielt hat
+                                let teamSideIndex = -1;
+                                
+                                // Method 1: Check player stats to determine side
+                                Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                                    if (teamPlayersInGame.includes(pName) && pStats.side) {
+                                        teamSideIndex = pStats.side === 'side1' ? 0 : 1;
+                                    }
+                                });
+                                
+                                // Method 2: Fallback - Check based on team names
+                                if (teamSideIndex === -1 && match.teams.length >= 2) {
+                                    match.teams.forEach((teamName, idx) => {
+                                        if (teamName.includes('ABL') || 
+                                            teamName === 'ABL' ||
+                                            teamName.includes('ShadySquad') ||
+                                            teamPlayersInGame.some(p => p.includes(teamName))) {
+                                            teamSideIndex = idx;
+                                        }
+                                    });
+                                }
+                                
+                                if (debugMode) {
+                                    console.log('Team playing on side:', teamSideIndex + 1);
+                                    console.log('Team name from teams array:', match.teams[teamSideIndex]);
+                                }
+                                
+                                // Check if team won
+                                if (teamSideIndex >= 0 && match.teams.length > teamSideIndex) {
+                                    const teamName = match.teams[teamSideIndex];
+                                    // Normalize team names for comparison (remove extra spaces, make lowercase)
+                                    const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
+                                    const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
+                                    
+                                    if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
+                                        totalGamesWon++;
+                                        if (debugMode) console.log('✅ Team WON! Winner:', game.winner);
+                                    } else if (debugMode) {
+                                        console.log('❌ Team LOST. Winner was:', game.winner, 'Team was:', teamName);
+                                        console.log('Normalized comparison:', normalizedWinner, 'vs', normalizedTeamName);
+                                    }
+                                } else if (debugMode) {
+                                    console.log('⚠️ Could not determine winner - teamSideIndex:', teamSideIndex, 'teams:', match.teams);
+                                }
+                            }
+                            
+                            // Analyze bans - gegen das Team
+                            // Nutze die gleiche Logik wie oben um die Team-Seite zu finden
+                            let teamIndex = -1;
+                            
+                            // Method 1: Check player stats to determine side
+                            Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                                if (teamPlayersInGame.includes(pName) && pStats.side) {
+                                    teamIndex = pStats.side === 'side1' ? 0 : 1;
+                                }
+                            });
+                            
+                            // Method 2: Fallback based on team names
+                            if (teamIndex === -1 && match.teams.length >= 2) {
+                                match.teams.forEach((teamName, idx) => {
+                                    if (teamName.includes('ABL') || 
+                                        teamName === 'ABL' ||
+                                        teamName.includes('ShadySquad') ||
+                                        teamPlayersInGame.some(p => p.includes(teamName))) {
+                                        teamIndex = idx;
+                                    }
+                                });
+                            }
+                            
+                            if (teamIndex >= 0) {
+                                // Bans gegen das Team sind die Bans der anderen Seite
+                                const againstTeam = teamIndex === 0 ? game.bans.team2 : game.bans.team1;
+                                const byTeam = teamIndex === 0 ? game.bans.team1 : game.bans.team2;
+                                
+                                if (debugMode) {
+                                    console.log(`Team on side ${teamIndex + 1}`);
+                                    console.log(`Bans against team (from side ${teamIndex === 0 ? 2 : 1}):`, againstTeam);
+                                    console.log(`Bans by team (from side ${teamIndex + 1}):`, byTeam);
+                                }
+                                
+                                if (againstTeam && againstTeam.length > 0) {
+                                    againstTeam.forEach(ban => {
+                                        bansAgainstTeam[ban] = (bansAgainstTeam[ban] || 0) + 1;
+                                    });
+                                }
+                                
+                                if (byTeam && byTeam.length > 0) {
+                                    byTeam.forEach(ban => {
+                                        bansByTeam[ban] = (bansByTeam[ban] || 0) + 1;
+                                    });
+                                }
+                            } else if (debugMode) {
+                                console.log('Could not determine team side for ban analysis');
+                            }
+                            
+                            // Variable für teamIndex hier definieren, damit sie später verwendet werden kann
+                            let globalTeamIndex = teamIndex;
+                            
+                            // Track player performance - NUR Team-Spieler
+                            Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
+                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                                
+                                // Prüfe ob es ein Team-Spieler ist
+                                const matchingOPGGPlayer = opggPlayers.find(p => 
+                                    p.name === normalizedName || 
+                                    playerName.includes(p.name) ||
+                                    p.name.includes(normalizedName)
+                                );
+                                
+                                if (!matchingOPGGPlayer) return;
+                                
+                                const consistentName = matchingOPGGPlayer.name;
+                                
+                                if (!playerPrimeStats[consistentName]) {
+                                    playerPrimeStats[consistentName] = {
+                                        games: 0,
+                                        champions: {},
+                                        totalKills: 0,
+                                        totalDeaths: 0,
+                                        totalAssists: 0,
+                                        pickHistory: []
+                                    };
+                                }
+                                
+                                playerPrimeStats[consistentName].games++;
+                                
+                                // Track champion usage
+                                if (!playerPrimeStats[consistentName].champions[stats.champion]) {
+                                    playerPrimeStats[consistentName].champions[stats.champion] = {
+                                        games: 0,
+                                        totalKDA: { k: 0, d: 0, a: 0 }
+                                    };
+                                }
+                                playerPrimeStats[consistentName].champions[stats.champion].games++;
+                                
+                                // Track pick history with context
+                                const bannedChamps = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
+                                
+                                // Finde das Matchup
+                                let matchup = null;
+                                if (game.allPlayerStats && stats.position !== undefined && stats.side !== undefined) {
+                                    const opponentSide = stats.side === 'side1' ? 'side2' : 'side1';
+                                    const opponent = game.allPlayerStats[`${opponentSide}_${stats.position}`];
+                                    if (opponent) {
+                                        matchup = {
+                                            champion: opponent.champion,
+                                            kda: opponent.kda
+                                        };
+                                    }
+                                }
+                                
+                                // Determine if team won this game
+                                let teamWonThisGame = false;
+                                
+                                // Use the same logic as above to determine if team won
+                                let teamSideForWin = -1;
+                                
+                                // Method 1: Check player stats to determine side
+                                Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                                    if (teamPlayersInGame.includes(pName) && pStats.side) {
+                                        teamSideForWin = pStats.side === 'side1' ? 0 : 1;
+                                    }
+                                });
+                                
+                                // Method 2: Fallback based on team names
+                                if (teamSideForWin === -1 && match.teams.length >= 2) {
+                                    match.teams.forEach((teamName, idx) => {
+                                        if (teamName.includes('ABL') || 
+                                            teamName === 'ABL' ||
+                                            teamName.includes('ShadySquad') ||
+                                            teamName.includes('BTZ') ||
+                                            teamPlayersInGame.some(p => p.includes(teamName))) {
+                                            teamSideForWin = idx;
+                                        }
+                                    });
+                                }
+                                
+                                if (teamSideForWin >= 0 && match.teams.length > teamSideForWin) {
+                                    const teamName = match.teams[teamSideForWin];
+                                    const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
+                                    const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
+                                    
+                                    if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
+                                        teamWonThisGame = true;
+                                    }
+                                }
+                                
+                                playerPrimeStats[consistentName].pickHistory.push({
+                                    champion: stats.champion,
+                                    gameNumber: gameIdx + 1,
+                                    matchNumber: match.matchNumber,
+                                    banned: bannedChamps,
+                                    kda: stats.kda,
+                                    won: teamWonThisGame,
+                                    matchup: matchup,
+                                    position: stats.position // Speichere Position für später
+                                });
+                                
+                                // Parse KDA
+                                const kdaParts = stats.kda.split('/').map(n => parseInt(n) || 0);
+                                if (kdaParts.length === 3) {
+                                    playerPrimeStats[consistentName].totalKills += kdaParts[0];
+                                    playerPrimeStats[consistentName].totalDeaths += kdaParts[1];
+                                    playerPrimeStats[consistentName].totalAssists += kdaParts[2];
+                                    
+                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.k += kdaParts[0];
+                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.d += kdaParts[1];
+                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.a += kdaParts[2];
+                                }
+                                
+                                // Track all champions played
+                                championsPlayedInPrime[stats.champion] = (championsPlayedInPrime[stats.champion] || 0) + 1;
+                                
+                                // Track overall champion history
+                                if (!analysis.championHistory[stats.champion]) {
+                                    analysis.championHistory[stats.champion] = [];
+                                }
+                                analysis.championHistory[stats.champion].push(consistentName);
+                            });
+                        });
+                    });
+                    
+                    // Flex Picks nur innerhalb des Teams
+                    const teamChampionPlayers = {};
+                    Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
+                        Object.keys(stats.champions).forEach(champion => {
+                            if (!teamChampionPlayers[champion]) {
+                                teamChampionPlayers[champion] = [];
+                            }
+                            teamChampionPlayers[champion].push(playerName);
+                        });
+                    });
+                    
+                    // Identifiziere Flex Picks
+                    Object.entries(teamChampionPlayers).forEach(([champion, players]) => {
+                        if (players.length > 1) {
+                            analysis.flexPicks[champion] = players;
+                        }
+                    });
+                    
+                    // Analyze pick patterns
+                    Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
+                        if (!analysis.pickPatterns[playerName]) {
+                            analysis.pickPatterns[playerName] = {};
+                        }
+                        
+                        stats.pickHistory.forEach(pick => {
+                            pick.banned.forEach(bannedChamp => {
+                                if (!analysis.pickPatterns[playerName][bannedChamp]) {
+                                    analysis.pickPatterns[playerName][bannedChamp] = [];
+                                }
+                                analysis.pickPatterns[playerName][bannedChamp].push(pick.champion);
+                            });
+                        });
+                    });
+                    
+                    // Store ban analysis
+                    analysis.banAnalysis.againstThem = bansAgainstTeam;
+                    analysis.banAnalysis.byThem = bansByTeam;
+                    
+                    if (debugMode) {
+                        console.log('\n=== BAN ANALYSIS SUMMARY ===');
+                        console.log('Bans against team:', bansAgainstTeam);
+                        console.log('Bans by team:', bansByTeam);
+                        console.log('Total unique bans against:', Object.keys(bansAgainstTeam).length);
+                        console.log('===========================\n');
+                    }
+                    
+                    // Analyze "Ban or Pick" patterns - NEU!
+                    const banOrPickPatterns = {};
+                    Object.entries(bansAgainstTeam).forEach(([champion, banCount]) => {
+                        if (banCount >= 2) {
+                            // Champion wurde oft gebannt - schaue wann er NICHT gebannt wurde
+                            let notBannedGames = [];
+                            let pickedWhenOpen = [];
+                            
+                            primeMatches.forEach(match => {
+                                match.games.forEach((game, gameIdx) => {
+                                    const allBans = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
+                                    const wasBanned = allBans.includes(champion);
+                                    
+                                    if (!wasBanned) {
+                                        notBannedGames.push({ match: match.matchNumber, game: gameIdx + 1 });
+                                        
+                                        // Wurde er gepickt?
+                                        Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
+                                            if (stats.champion === champion) {
+                                                // Finde den OP.GG Spieler
+                                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                                                const matchingPlayer = opggPlayers.find(p => 
+                                                    p.name === normalizedName || 
+                                                    playerName.includes(p.name) ||
+                                                    p.name.includes(normalizedName)
+                                                );
+                                                
+                                                if (matchingPlayer) {
+                                                    pickedWhenOpen.push({
+                                                        player: matchingPlayer.name,
+                                                        match: match.matchNumber,
+                                                        game: gameIdx + 1,
+                                                        won: game.winner === (match.teams.find(t => t === 'ABL') || match.teams[0])
+                                                    });
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            });
+                            
+                            if (notBannedGames.length > 0 && pickedWhenOpen.length > 0) {
+                                banOrPickPatterns[champion] = {
+                                    banCount: banCount,
+                                    notBannedCount: notBannedGames.length,
+                                    pickedCount: pickedWhenOpen.length,
+                                    pickRate: Math.round((pickedWhenOpen.length / notBannedGames.length) * 100),
+                                    pickedBy: pickedWhenOpen
+                                };
+                            }
+                        }
+                    });
+                    
+                    analysis.banOrPickPatterns = banOrPickPatterns;
+                    
+                    // Add Prime League performance summary
+                    const winRate = totalGamesPlayed > 0 ? Math.round((totalGamesWon / totalGamesPlayed) * 100) : 0;
+                    
+                    if (debugMode) {
+                        console.log('=== Prime League Summary ===');
+                        console.log(`Total games: ${totalGamesPlayed}`);
+                        console.log(`Games won: ${totalGamesWon}`);
+                        console.log(`Win rate: ${winRate}%`);
+                        console.log('===========================');
+                    }
+                    
+                    analysis.primeLeaguePerformance.push({
+                        type: 'summary',
+                        description: `${totalGamesWon} Siege in ${totalGamesPlayed} Prime League Spielen (${winRate}% WR)`
+                    });
+                    
+                    // Add "Ban or Pick" patterns - WICHTIGSTE INFO ZUERST!
+                    if (Object.keys(analysis.banOrPickPatterns || {}).length > 0) {
+                        const banOrPickDetails = [];
+                        const banOrPickTableData = [];
+                        
+                        Object.entries(analysis.banOrPickPatterns).forEach(([champion, data]) => {
+                            const mainPicker = data.pickedBy[0]?.player;
+                            banOrPickTableData.push({
+                                champion: champion,
+                                banned: data.banCount,
+                                open: data.notBannedCount,
+                                picked: data.pickedCount,
+                                pickRate: data.pickRate,
+                                player: mainPicker
+                            });
+                        });
+                        
+                        // Sortiere nach Pickrate (absteigend)
+                        banOrPickTableData.sort((a, b) => b.pickRate - a.pickRate || b.picked - a.picked);
+                        
+                        if (banOrPickTableData.length > 0) {
+                            analysis.strategies.unshift({  // unshift statt push für erste Position
+                                title: 'Ban or Pick Patterns',
+                                description: 'Champions die instant gepickt werden wenn sie nicht gebannt sind',
+                                tableData: banOrPickTableData  // Neues Format für Tabellendarstellung
+                            });
+                        }
+                    }
+                    
+                    // Add flex pick strategy
+                    if (Object.keys(analysis.flexPicks).length > 0) {
+                        const flexDetails = Object.entries(analysis.flexPicks).map(([champ, players]) => 
+                            `${champ}: ${players.join(' + ')} (Flex Pick)`
+                        );
+                        
+                        analysis.strategies.push({
+                            title: 'Flex Picks',
+                            description: 'Champions die von mehreren Spielern gespielt werden können',
+                            details: flexDetails
+                        });
+                    }
+                    
+                    // Add fallback strategies - VERBESSERTES FORMAT
+                    const fallbackByPlayer = {};
+                    Object.entries(analysis.pickPatterns).forEach(([playerName, patterns]) => {
+                        Object.entries(patterns).forEach(([bannedChamp, picks]) => {
+                            const uniquePicks = [...new Set(picks)];
+                            if (uniquePicks.length > 0) {
+                                const player = opggPlayers.find(p => p.name === playerName);
+                                if (player && player.champions.some(c => c.name === bannedChamp && c.games > 20)) {
+                                    if (!fallbackByPlayer[playerName]) {
+                                        fallbackByPlayer[playerName] = [];
+                                    }
+                                    fallbackByPlayer[playerName].push({
+                                        banned: bannedChamp,
+                                        alternatives: uniquePicks
+                                    });
+                                }
+                            }
+                        });
+                    });
+                    
+                    if (Object.keys(fallbackByPlayer).length > 0) {
+                        analysis.strategies.push({
+                            title: 'Fallback Patterns',
+                            description: 'Was sie spielen wenn ihre Mains gebannt sind',
+                            fallbackData: fallbackByPlayer  // Neues Format für bessere Darstellung
+                        });
+                    }
+                    
+                    // Store Prime League stats
+                    analysis.primeLeagueStats = playerPrimeStats;
+                }
+                
+                // Calculate comprehensive ban priorities based on multiple factors
+                const championBanScores = new Map();
+                
+                // Analyze each player's data
+                opggPlayers.forEach(player => {
+                    const playerAnalysis = {
+                        ...player,
+                        comfortPicks: [],
+                        weakChampions: [],
+                        banPriority: 'low',
+                        notes: [],
+                        soloQAnalysis: true,
+                        primeLeagueStats: analysis.primeLeagueStats[player.name] || null,
+                        championPoolSize: 0,
+                        isOTP: false,
+                        performanceTrend: 'stable'
+                    };
+                    
+                    // Ensure champions array exists
+                    if (!player.champions || !Array.isArray(player.champions)) {
+                        player.champions = [];
+                    }
+                    
+                    // Sort all champions by games played
+                    player.champions.sort((a, b) => b.games - a.games);
+                    
+                    // Calculate champion pool size (champions with 5+ games)
+                    playerAnalysis.championPoolSize = player.champions.filter(c => c.games >= 5).length;
+                    
+                    // Check if player is a one-trick pony (50%+ games on one champ)
+                    if (player.champions.length > 0) {
+                        const totalGames = player.champions.reduce((sum, c) => sum + c.games, 0);
+                        const topChampGames = player.champions[0].games;
+                        if (topChampGames / totalGames >= 0.5) {
+                            playerAnalysis.isOTP = true;
+                            playerAnalysis.notes.push(`⚠️ One-Trick: ${Math.round((topChampGames / totalGames) * 100)}% aller Spiele auf ${player.champions[0].name}`);
+                        }
+                    }
+                    
+                    // Analyze performance trend in Prime League
+                    if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.pickHistory.length >= 3) {
+                        const recentGames = playerAnalysis.primeLeagueStats.pickHistory.slice(-3);
+                        const recentWins = recentGames.filter(g => g.won).length;
+                        const recentKDAs = recentGames.map(g => {
+                            const parts = g.kda.split('/').map(n => parseInt(n) || 0);
+                            return parts.length === 3 ? (parts[0] + parts[2]) / Math.max(1, parts[1]) : 0;
+                        });
+                        const avgRecentKDA = recentKDAs.reduce((a, b) => a + b, 0) / recentKDAs.length;
+                        
+                        if (recentWins === 0 && avgRecentKDA < 2) {
+                            playerAnalysis.performanceTrend = 'declining';
+                            playerAnalysis.notes.push('📉 Negative Form in Prime League (letzte 3 Spiele)');
+                        } else if (recentWins >= 2 && avgRecentKDA > 3) {
+                            playerAnalysis.performanceTrend = 'improving';
+                            playerAnalysis.notes.push('📈 Gute Form in Prime League (letzte 3 Spiele)');
+                        }
+                    }
+                    
+                    // Simply take top 10 champions by games played as comfort picks
+                    playerAnalysis.comfortPicks = player.champions.slice(0, 10);
+                    
+                    // Calculate ban scores for each champion
+                    player.champions.forEach(champion => {
+                        const championName = champion.name;
+                        let score = 0;
+                        
+                        // Factor 1: Solo Queue Performance (max 30 points)
+                        const soloQGames = champion.games;
+                        const soloQWinRate = champion.winRate || 50;
+                        
+                        // Games played score (max 15 points)
+                        if (soloQGames >= 100) score += 15;
+                        else if (soloQGames >= 50) score += 10;
+                        else if (soloQGames >= 20) score += 5;
+                        
+                        // Win rate score (max 15 points)
+                        if (soloQWinRate >= 65) score += 15;
+                        else if (soloQWinRate >= 60) score += 10;
+                        else if (soloQWinRate >= 55) score += 5;
+                        
+                        // Factor 2: Prime League Performance (max 30 points)
+                        if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.champions[championName]) {
+                            const primeGames = playerAnalysis.primeLeagueStats.champions[championName].games;
+                            const totalPrimeGames = playerAnalysis.primeLeagueStats.games;
+                            const primePickRate = (primeGames / totalPrimeGames) * 100;
+                            
+                            // Prime pick rate score (max 20 points)
+                            if (primePickRate >= 50) score += 20;
+                            else if (primePickRate >= 33) score += 15;
+                            else if (primePickRate >= 20) score += 10;
+                            else if (primePickRate >= 10) score += 5;
+                            
+                            // Prime games played (max 10 points)
+                            if (primeGames >= 4) score += 10;
+                            else if (primeGames >= 3) score += 7;
+                            else if (primeGames >= 2) score += 5;
+                            else if (primeGames >= 1) score += 3;
+                        }
+                        
+                        // Factor 3: Ban Rate gegen Team (max 20 points)
+                        const banCount = analysis.banAnalysis.againstThem[championName] || 0;
+                        if (banCount >= 5) score += 20;
+                        else if (banCount >= 3) score += 15;
+                        else if (banCount >= 2) score += 10;
+                        else if (banCount >= 1) score += 5;
+                        
+                        // Factor 4: Pick Rate wenn offen (max 20 points)
+                        if (analysis.banOrPickPatterns[championName]) {
+                            const pickRate = analysis.banOrPickPatterns[championName].pickRate;
+                            if (pickRate === 100) score += 20;
+                            else if (pickRate >= 75) score += 15;
+                            else if (pickRate >= 50) score += 10;
+                            else if (pickRate >= 25) score += 5;
+                        }
+                        
+                        // Store the score with player info
+                        if (!championBanScores.has(championName) || championBanScores.get(championName).score < score) {
+                            championBanScores.set(championName, {
+                                score: score,
+                                player: player.name,
+                                soloQGames: soloQGames,
+                                soloQWinRate: soloQWinRate,
+                                primeGames: playerAnalysis.primeLeagueStats?.champions[championName]?.games || 0,
+                                banCount: banCount,
+                                pickRate: analysis.banOrPickPatterns[championName]?.pickRate || 0
+                            });
+                        }
+                    });
+                    
+                    // Solo Queue specific weaknesses
+                    if (player.winRate && player.winRate < 48) {
+                        playerAnalysis.notes.push(`Schwache Solo Queue Form (${player.winRate}% WR)`);
+                    }
+                    
+                    // No data fallback
+                    if (player.champions.length === 0) {
+                        playerAnalysis.notes.push('Keine Solo Queue Champion-Daten verfügbar');
+                    }
+                    
+                    // Pass through sorted champions
+                    playerAnalysis.champions = player.champions;
+                    
+                    analysis.players.push(playerAnalysis);
+                });
+                
+                // Generate ban recommendations based on scores
+                const sortedBanScores = Array.from(championBanScores.entries())
+                    .sort(([,a], [,b]) => b.score - a.score)
+                    .slice(0, 10); // Top 10 ban candidates
+                
+                sortedBanScores.forEach(([champion, data]) => {
+                    let priority = 'medium';
+                    let source = 'mixed';
+                    
+                    if (data.score >= 70) priority = 'very-high';
+                    else if (data.score >= 50) priority = 'high';
+                    
+                    // Determine source
+                    if (data.banCount > 0 && data.soloQGames > 20) source = 'both';
+                    else if (data.primeGames > 0 && data.soloQGames < 20) source = 'prime';
+                    else if (data.soloQGames > 20 && data.primeGames === 0) source = 'soloq';
+                    
+                    // Generate reason
+                    let reason = `${data.player}: `;
+                    const factors = [];
+                    
+                    if (data.soloQGames >= 50) {
+                        factors.push(`${data.soloQGames} SoloQ Spiele (${data.soloQWinRate}% WR)`);
+                    }
+                    
+                    if (data.primeGames > 0) {
+                        factors.push(`${data.primeGames}x in Prime League`);
+                    }
+                    
+                    if (data.banCount > 0) {
+                        factors.push(`${data.banCount}x gebannt`);
+                    }
+                    
+                    if (data.pickRate >= 50) {
+                        factors.push(`${data.pickRate}% Pick Rate wenn offen`);
+                    }
+                    
+                    reason += factors.join(', ');
+                    
+                    // Special case for must-ban champions
+                    if (data.pickRate === 100 && data.banCount >= 2) {
+                        reason = `MUSS gebannt werden! ${reason}`;
+                        priority = 'very-high';
+                    }
+                    
+                    analysis.banRecommendations.push({
+                        champion: champion,
+                        reason: reason,
+                        priority: priority,
+                        source: source,
+                        score: data.score // For debugging
+                    });
+                });
+                
+                // Remove the old duplicate-removal code since we now have better logic
+                // Sort ban recommendations by priority and score
+                analysis.banRecommendations.sort((a, b) => {
+                    const priorityOrder = { 'very-high': 0, 'high': 1, 'medium': 2, 'low': 3 };
+                    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+                    if (priorityDiff !== 0) return priorityDiff;
+                    // If same priority, sort by score
+                    return (b.score || 0) - (a.score || 0);
+                });
+                
+                // Check for mental boom patterns
+                const mentalBoomPlayers = [];
+                if (analysis.primeLeagueStats) {
+                    Object.entries(analysis.primeLeagueStats).forEach(([playerName, stats]) => {
+                        const avgDeaths = stats.totalDeaths / stats.games;
+                        if (avgDeaths > 7) {
+                            mentalBoomPlayers.push(`${playerName} (${avgDeaths.toFixed(1)} Deaths/Game)`);
+                        }
+                    });
+                }
+                
+                if (mentalBoomPlayers.length > 0) {
+                    analysis.strategies.push({
+                        title: 'Mental Boom Targets',
+                        description: 'Diese Spieler sterben oft und tilten möglicherweise',
+                        details: mentalBoomPlayers
+                    });
+                }
+                
+                // Analyze champion pool flexibility
+                const flexibilityAnalysis = [];
+                analysis.players.forEach(player => {
+                    if (player.isOTP) {
+                        flexibilityAnalysis.push(`${player.name}: One-Trick (${player.championPoolSize} Champs) - Ban ${player.comfortPicks[0].name} = Win`);
+                    } else if (player.championPoolSize <= 3) {
+                        flexibilityAnalysis.push(`${player.name}: Sehr kleiner Pool (${player.championPoolSize} Champs) - leicht auszubannen`);
+                    }
+                });
+                
+                if (flexibilityAnalysis.length > 0) {
+                    analysis.strategies.push({
+                        title: 'Champion Pool Schwächen',
+                        description: 'Spieler mit begrenztem Champion Pool',
+                        details: flexibilityAnalysis
+                    });
+                }
+                
+
+                
+            } catch (error) {
+                console.error('Error in analyzePlayerData:', error);
+                analysis.strategies.push({
+                    title: 'Analyse-Fehler',
+                    description: 'Ein Fehler ist bei der Analyse aufgetreten',
+                    details: ['Bitte überprüfe die hochgeladenen Dateien']
+                });
+            }
+            
+            return analysis;
+        }
+        
+        function displayResults(analysis) {
+            if (!analysis || !analysis.players || analysis.players.length === 0) {
+                analysisResults.innerHTML = `
+                    <div class="error">
+                        <h3>⚠️ Keine Spielerdaten gefunden</h3>
+                        <p>Es konnten keine Spieler aus den hochgeladenen Dateien extrahiert werden.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="team-overview">
+                    <h2>📊 Team Übersicht</h2>
+                    <p>Anzahl Spieler analysiert: ${analysis.players.length}</p>
+                    <p>Prime League Win Rate:</p>
+                    <div class="threat-bar">
+                        <div class="threat-fill" style="width: ${calculateThreatLevel(analysis)}%"></div>
+                    </div>
+                    
+                    ${analysis.primeLeaguePerformance && analysis.primeLeaguePerformance.length > 0 ? `
+                        <h3 style="color: #c89b3c; margin-top: 20px;">📊 Prime League Performance:</h3>
+                        <ul>
+                            ${analysis.primeLeaguePerformance.map(perf => `<li>• ${perf.description}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    
+                    <h3 style="color: #ff6b6b; margin-top: 20px;">🚫 Häufig gegen das Team gebannt:</h3>
+                    ${analysis.banAnalysis && analysis.banAnalysis.againstThem && Object.keys(analysis.banAnalysis.againstThem).length > 0 ? `
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                            ${Object.entries(analysis.banAnalysis.againstThem)
+                                .sort(([,a], [,b]) => b - a)
+                                .slice(0, 6)
+                                .map(([champ, count]) => `
+                                    <div style="background: #3c4043; padding: 8px 12px; border-radius: 5px; border-left: 3px solid #ff6b6b;">
+                                        <strong>${champ}</strong> (${count}x)
+                                    </div>
+                                `).join('')}
+                        </div>
+                        <p style="color: #b0b0b0; font-size: 0.95em; margin-top: 10px;">
+                            Diese Champions werden von Gegnern gefürchtet und sollten eventuell gepickt werden!
+                        </p>
+                    ` : `
+                        <p style="color: #b0b0b0; font-size: 0.95em; margin-top: 10px;">
+                            Keine Champions wurden gegen das Team gebannt.
+                        </p>
+                    `}
+                </div>
+                
+                <h2 style="color: #c89b3c; margin-bottom: 20px;">👥 Solo Queue Analyse (OP.GG)</h2>
+                <div class="player-cards">
+                    ${analysis.players.map(player => {
+                        const primeStats = player.primeLeagueStats;
+                        return `
+                        <div class="player-card">
+                            <h3>${player.name || 'Unbekannt'}${player.tag || ''}</h3>
+                            <p>Rang: ${player.rank || 'Unknown'} ${player.lp ? `(${player.lp} LP)` : ''} | WR: ${player.winRate || '?'}%</p>
+                            
+                            ${player.winRate >= 55 ? '<span class="tag consistent">✅ Gute Solo Q Form</span>' : ''}
+                            ${player.winRate < 48 ? '<span class="tag mental-weak">⚠️ Schwache Solo Q Form</span>' : ''}
+                            ${player.isOTP ? '<span class="tag mental-weak">🎯 One-Trick Pony</span>' : ''}
+                            ${player.championPoolSize <= 3 && !player.isOTP ? '<span class="tag mental-weak">📊 Kleiner Champion Pool</span>' : ''}
+                            ${player.performanceTrend === 'declining' ? '<span class="tag mental-weak">📉 Negative Form</span>' : ''}
+                            ${player.performanceTrend === 'improving' ? '<span class="tag consistent">📈 Gute Form</span>' : ''}
+                            
+                            ${primeStats ? `
+                                <div style="margin-top: 10px; padding: 10px; background: #2a2d33; border-radius: 5px;">
+                                    <h4 style="color: #c89b3c;">Prime League Stats:</h4>
+                                    <p style="font-size: 0.9em;">
+                                        ${primeStats.games} Spiele | 
+                                        ${((primeStats.totalKills + primeStats.totalAssists) / Math.max(1, primeStats.totalDeaths)).toFixed(2)} KDA
+                                    </p>
+                                    ${Object.entries(primeStats.champions).length > 0 ? `
+                                        <p style="font-size: 0.9em; color: #b0b0b0; margin-top: 5px;">
+                                            Prime Picks: ${Object.entries(primeStats.champions)
+                                                .sort(([,a], [,b]) => b.games - a.games)
+                                                .slice(0, 3)
+                                                .map(([champ, data]) => `${champ} (${data.games}x)`)
+                                                .join(', ')}
+                                        </p>
+                                    ` : ''}
+                                    ${primeStats.pickHistory && primeStats.pickHistory.length > 0 ? `
+                                        <details style="margin-top: 10px;">
+                                            <summary style="cursor: pointer; color: #f0e6d2;">📋 Pick Historie anzeigen</summary>
+                                            <div style="margin-top: 10px; font-size: 0.85em;">
+                                                ${primeStats.pickHistory.map(pick => {
+                                                    return `
+                                                    <div style="margin: 5px 0; padding: 5px; background: #1e2328; border-radius: 3px;">
+                                                        Match ${pick.matchNumber}, Game ${pick.gameNumber}: 
+                                                        <strong>${pick.champion}</strong> (${pick.kda}) 
+                                                        ${pick.won ? '✅' : '❌'}
+                                                        ${pick.matchup ? `
+                                                            <span style="color: #c89b3c;">vs ${pick.matchup.champion}</span> 
+                                                            <span style="color: #b0b0b0;">(${pick.matchup.kda})</span>
+                                                        ` : ''}
+                                                    </div>
+                                                `}).join('')}
+                                            </div>
+                                        </details>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            ${player.comfortPicks && player.comfortPicks.length > 0 ? `
+                                <div class="champion-list">
+                                    <h4 style="color: #f0e6d2; margin-top: 15px;">🎯 Solo Queue Comfort Picks:</h4>
+                                    ${player.comfortPicks.slice(0, 10).map(champ => {
+                                        const bannedAgainst = analysis.banAnalysis?.againstThem?.[champ.name] || 0;
+                                        return `
+                                        <div class="champion-item" ${bannedAgainst > 0 ? 'style="border-left: 3px solid #ff6b6b; padding-left: 5px;"' : ''}>
+                                            <span>${champ.name} ${bannedAgainst > 0 ? `<small style="color: #ff8888;">(${bannedAgainst}x gebannt)</small>` : ''}</span>
+                                            <div class="champion-stats">
+                                                <span>${champ.games} Spiele</span>
+                                                <span class="${getWinrateClass(champ.winRate)}">${champ.winRate}% WR</span>
+                                                ${champ.kda > 0 ? `<span>${champ.kda.toFixed(1)} KDA</span>` : ''}
+                                            </div>
+                                        </div>
+                                    `}).join('')}
+                                </div>
+                            ` : player.champions && player.champions.length === 0 ? '<p style="margin-top: 15px; color: #b0b0b0;">Keine Solo Queue Champion-Daten verfügbar</p>' : ''}
+                            
+                            ${player.champions && player.champions.length > player.comfortPicks.length ? `
+                                <details style="margin-top: 10px;">
+                                    <summary style="cursor: pointer; color: #c89b3c; font-size: 0.9em;">
+                                        📊 Alle ${player.champions.length} Champions anzeigen
+                                    </summary>
+                                    <div class="champion-list" style="margin-top: 10px;">
+                                        ${player.champions
+                                            .sort((a, b) => b.games - a.games)
+                                            .map(champ => {
+                                                const isComfortPick = player.comfortPicks.some(cp => cp.name === champ.name);
+                                                if (isComfortPick) return '';
+                                                
+                                                return `
+                                                <div class="champion-item">
+                                                    <span>${champ.name}</span>
+                                                    <div class="champion-stats">
+                                                        <span>${champ.games} Spiele</span>
+                                                        <span class="${getWinrateClass(champ.winRate)}">${champ.winRate}% WR</span>
+                                                        ${champ.kda > 0 ? `<span>${champ.kda.toFixed(1)} KDA</span>` : ''}
+                                                    </div>
+                                                </div>
+                                                `;
+                                            }).join('')}
+                                    </div>
+                                </details>
+                            ` : ''}
+                            
+                            ${player.weakChampions && player.weakChampions.length > 0 ? `
+                                <div style="margin-top: 15px;">
+                                    <h4 style="color: #ff6b6b;">❌ Schwache Picks:</h4>
+                                    ${player.weakChampions.slice(0, 3).map(champ => `
+                                        <div class="champion-item">
+                                            <span>${champ.name}</span>
+                                            <div class="champion-stats">
+                                                <span>${champ.games} Spiele</span>
+                                                <span class="winrate-low">${champ.winRate}% WR</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            ${player.notes && player.notes.length > 0 ? `
+                                <div style="margin-top: 15px;">
+                                    <h4 style="color: #ff6b6b;">📝 Notizen:</h4>
+                                    ${player.notes.map(note => `<p style="font-size: 0.9em;">• ${note}</p>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `}).join('')}
+                </div>
+                
+                <div class="recommendations">
+                    <h2>🎯 Empfehlungen</h2>
+                    
+                    ${analysis.banRecommendations && analysis.banRecommendations.length > 0 ? `
+                        <h3 style="color: #ff6b6b; margin-top: 20px;">🚫 Ban Prioritäten:</h3>
+                        <ul class="ban-list">
+                            ${analysis.banRecommendations.slice(0, 6).map(ban => {
+                                let priorityClass = 'priority-' + ban.priority;
+                                if (ban.priority === 'very-high') priorityClass = 'priority-high';
+                                
+                                let icon = '';
+                                if (ban.source === 'both') icon = '🔥 ';
+                                else if (ban.source === 'prime') icon = '🏆 ';
+                                else icon = '📊 ';
+                                
+                                return `
+                                <li class="${priorityClass}">
+                                    ${icon}<strong>${ban.champion}</strong> - ${ban.reason}
+                                    ${debugMode && ban.score ? `<small style="color: #666; float: right;">Score: ${ban.score}</small>` : ''}
+                                </li>
+                            `}).join('')}
+                        </ul>
+                        <p style="font-size: 0.9em; color: #b0b0b0; margin-top: 15px; background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 8px;">
+                            🔥 = Sowohl in Prime League gebannt als auch Solo Queue Main<br>
+                            🏆 = Prime League Respekt-Ban<br>
+                            📊 = Solo Queue Statistiken
+                        </p>
+                    ` : '<p style="margin-top: 20px;">Keine spezifischen Ban-Empfehlungen</p>'}
+                    
+                    ${analysis.strategies && analysis.strategies.length > 0 ? `
+                        <h3 style="color: #00ff00; margin-top: 25px;">📋 Strategien:</h3>
+                        <ul class="strategy-list">
+                            ${analysis.strategies.map(strategy => {
+                                let icon = '📋';
+                                if (strategy.title === 'Ban or Pick Patterns') icon = '⚡';
+                                else if (strategy.title === 'Flex Picks') icon = '🔄';
+                                else if (strategy.title === 'Fallback Patterns') icon = '🔀';
+                                else if (strategy.title === 'Mental Boom Targets') icon = '🎯';
+                                else if (strategy.title === 'Champion Pool Schwächen') icon = '🎱';
+                                
+                                // Special handling for Ban or Pick Patterns
+                                if (strategy.title === 'Ban or Pick Patterns' && strategy.tableData) {
+                                    return `
+                                    <li>
+                                        <strong>${icon} ${strategy.title}</strong>
+                                        <p style="font-size: 0.9em; margin-top: 5px;">${strategy.description}</p>
+                                        <div style="margin-top: 10px; overflow-x: auto;">
+                                            <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                                                <thead>
+                                                    <tr style="border-bottom: 2px solid #c89b3c;">
+                                                        <th style="text-align: left; padding: 10px; color: #f0e6d2; position: sticky; left: 0; background: #1e2328;">Champion</th>
+                                                        <th style="text-align: center; padding: 10px; color: #f0e6d2;">Gebannt</th>
+                                                        <th style="text-align: center; padding: 10px; color: #f0e6d2;">Offen</th>
+                                                        <th style="text-align: center; padding: 10px; color: #f0e6d2;">Gepickt</th>
+                                                        <th style="text-align: center; padding: 10px; color: #f0e6d2; font-weight: 700;">Pick Rate</th>
+                                                        <th style="text-align: left; padding: 10px; color: #f0e6d2;">Spieler</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${strategy.tableData.map((data, index) => {
+                                                        const rateColor = data.pickRate === 100 ? '#ff4e4e' : data.pickRate >= 75 ? '#ffaa4e' : data.pickRate >= 50 ? '#ffff4e' : '#88ff88';
+                                                        const rowBg = index % 2 === 0 ? 'rgba(0, 0, 0, 0.2)' : 'transparent';
+                                                        return `
+                                                        <tr style="background: ${rowBg}; border-bottom: 1px solid rgba(200, 155, 60, 0.2);">
+                                                            <td style="padding: 10px; font-weight: 600; color: #f0e6d2; position: sticky; left: 0; background: ${index % 2 === 0 ? 'rgba(30, 35, 40, 0.9)' : 'rgba(20, 23, 28, 0.9)'};">${data.champion}</td>
+                                                            <td style="text-align: center; padding: 10px; color: #ff8888;">${data.banned}x</td>
+                                                            <td style="text-align: center; padding: 10px; color: #b0b0b0;">${data.open}x</td>
+                                                            <td style="text-align: center; padding: 10px; color: #88ff88;">${data.picked}x</td>
+                                                            <td style="text-align: center; padding: 10px; font-weight: 700; font-size: 1.1em; color: ${rateColor}; text-shadow: 0 0 10px ${rateColor}88;">${data.pickRate}%</td>
+                                                            <td style="padding: 10px; color: #c89b3c; font-weight: 600;">${data.player}</td>
+                                                        </tr>
+                                                        `;
+                                                    }).join('')}
+                                                </tbody>
+                                            </table>
+                                            ${strategy.tableData.some(d => d.pickRate >= 75) ? `
+                                                <p style="margin-top: 10px; padding: 10px; background: rgba(255, 78, 78, 0.1); border-left: 3px solid #ff4e4e; border-radius: 5px; color: #f0e6d2;">
+                                                    ⚠️ <strong>Achtung:</strong> Champions mit 75%+ Pick Rate sollten UNBEDINGT gebannt werden!
+                                                </p>
+                                            ` : ''}
+                                        </div>
+                                    </li>
+                                    `;
+                                }
+                                
+                                // Special handling for Fallback Patterns
+                                if (strategy.title === 'Fallback Patterns' && strategy.fallbackData) {
+                                    return `
+                                    <li>
+                                        <strong>${icon} ${strategy.title}</strong>
+                                        <p style="font-size: 0.9em; margin-top: 5px;">${strategy.description}</p>
+                                        <div style="margin-top: 10px;">
+                                            ${Object.entries(strategy.fallbackData).map(([playerName, patterns]) => `
+                                                <div style="background: rgba(10, 13, 18, 0.8); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #c89b3c;">
+                                                    <strong style="color: #f0e6d2; font-size: 1.1em;">${playerName}</strong>
+                                                    <div style="display: grid; gap: 8px; margin-top: 10px;">
+                                                        ${patterns.map(pattern => `
+                                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                                <span style="color: #ff8888; font-weight: 600; min-width: 100px;">Wenn ${pattern.banned} gebannt</span>
+                                                                <span style="color: #b0b0b0;">→</span>
+                                                                <span style="color: #88ff88;">${pattern.alternatives.join(' oder ')}</span>
+                                                            </div>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </li>
+                                    `;
+                                }
+                                
+                                // Default handling for other strategies
+                                return `
+                                <li>
+                                    <strong>${icon} ${strategy.title}</strong>
+                                    <p style="font-size: 0.9em; margin-top: 5px;">${strategy.description}</p>
+                                    ${strategy.details && strategy.details.length > 0 ? `
+                                        <ul style="margin-top: 5px; font-size: 0.85em;">
+                                            ${strategy.details.map(d => `<li>• ${d}</li>`).join('')}
+                                        </ul>
+                                    ` : ''}
+                                </li>
+                            `}).join('')}
+                        </ul>
+                    ` : ''}
+                </div>
+            `;
+            
+            analysisResults.innerHTML = html;
+        }
+        
+        function calculateThreatLevel(analysis) {
+            // Zeige Prime League Win Rate statt Solo Queue Threat
+            if (analysis.primeLeaguePerformance && analysis.primeLeaguePerformance.length > 0) {
+                const match = analysis.primeLeaguePerformance[0].description.match(/\((\d+)%\s+WR\)/);
+                if (match) {
+                    return parseInt(match[1]);
+                }
+            }
+            return 50; // Default wenn keine Daten
+        }
+        
+        function getWinrateClass(winrate) {
+            if (winrate >= 55) return 'winrate-high';
+            if (winrate >= 48) return 'winrate-medium';
+            return 'winrate-low';
+        }
+        
+        async function analyzeData() {
+            resultsSection.style.display = 'block';
+            loadingDiv.style.display = 'block';
+            analysisResults.innerHTML = '';
+            
+            // Show progress
+            loadingDiv.innerHTML = '⏳ Analysiere OP.GG Daten...';
+            
+            try {
+                // Extract data
+                const opggPlayers = extractOPGGData(opggData);
+                console.log('OP.GG extraction complete:', opggPlayers);
+                
+                loadingDiv.innerHTML = '⏳ Analysiere Prime League Matches...';
+                const primeMatches = extractPrimeLeagueData(primeData);
+                console.log('Prime League extraction complete:', primeMatches);
+                
+                loadingDiv.innerHTML = '⏳ Erstelle Analyse...';
+                
+                // Analyze
+                const analysis = analyzePlayerData(opggPlayers, primeMatches);
+                console.log('Analysis complete:', analysis);
+                
+                // Store for export
+                currentAnalysis = analysis;
+                
+                // Display results
+                setTimeout(() => {
+                    loadingDiv.style.display = 'none';
+                    displayResults(analysis);
+                    // Show export buttons
+                    document.getElementById('exportButtons').style.display = 'flex';
+                }, 500);
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                loadingDiv.style.display = 'none';
+                analysisResults.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Fehler bei der Analyse</h3>
+                        <p>${error.message}</p>
+                        <p>Stelle sicher, dass die hochgeladenen Dateien korrekte OP.GG und Prime League HTML-Dateien sind.</p>
+                        <p style="margin-top: 10px;"><strong>Debug-Info:</strong> Öffne die Browser-Konsole (F12) für mehr Details.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Drag and Drop support
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            opggUpload.addEventListener(eventName, preventDefaults, false);
+            primeUpload.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            opggUpload.addEventListener(eventName, () => opggUpload.style.background = '#2a3f2a', false);
+            primeUpload.addEventListener(eventName, () => primeUpload.style.background = '#2a3f2a', false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            opggUpload.addEventListener(eventName, () => opggUpload.style.background = '', false);
+            primeUpload.addEventListener(eventName, () => primeUpload.style.background = '', false);
+        });
+        
+        opggUpload.addEventListener('drop', handleOPGGDrop, false);
+        primeUpload.addEventListener('drop', handlePrimeDrop, false);
+        
+        function handleOPGGDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                opggFile.files = files;
+                handleOPGGUpload({ target: { files: files } });
+            }
+        }
+        
+        function handlePrimeDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                primeFile.files = files;
+                handlePrimeUpload({ target: { files: files } });
+            }
+        }
+        
+        // Verbesserte PDF Generation
+        function generatePDF() {
+            if (!currentAnalysis) return;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let yPos = 20;
+            const lineHeight = 6;
+            const pageHeight = 280;
+            const leftMargin = 20;
+            const rightMargin = 190;
+            
+            // Helper function for page breaks
+            function checkPageBreak(requiredSpace = 30) {
+                if (yPos > pageHeight - requiredSpace) {
+                    doc.addPage();
+                    // Add dark background to new page
+                    doc.setFillColor(10, 14, 26);
+                    doc.rect(0, 0, 210, 297, 'F');
+                    yPos = 20;
+                    return true;
+                }
+                return false;
+            }
+            
+            // Helper function for colored priority text
+            function addPriorityText(text, priority, x, y) {
+                if (priority === 'very-high' || priority === 'high') {
+                    doc.setTextColor(255, 78, 78);
+                } else if (priority === 'medium') {
+                    doc.setTextColor(255, 255, 78);
+                } else {
+                    doc.setTextColor(136, 255, 136);
+                }
+                doc.text(text, x, y);
+                doc.setTextColor(255, 255, 255); // Reset
+            }
+            
+            // Title Page
+            doc.setFillColor(10, 14, 26);
+            doc.rect(0, 0, 210, 297, 'F');
+            
+            // Title with gradient effect simulation
+            doc.setFontSize(32);
+            doc.setTextColor(200, 155, 60);
+            doc.text('LoL ENEMY', 105, yPos, { align: 'center' });
+            yPos += 12;
+            doc.setTextColor(240, 230, 210);
+            doc.text('SCOUTING REPORT', 105, yPos, { align: 'center' });
+            yPos += 20;
+            
+            // Date and metadata
+            doc.setFontSize(12);
+            doc.setTextColor(150, 150, 150);
+            doc.text(new Date().toLocaleDateString('de-DE'), 105, yPos, { align: 'center' });
+            yPos += 10;
+            
+            // Calculate Prime League Win Rate
+            let primeWinRate = 0;
+            let totalPrimeGames = 0;
+            let totalPrimeWins = 0;
+            
+            if (currentAnalysis.primeLeaguePerformance && currentAnalysis.primeLeaguePerformance.length > 0) {
+                const match = currentAnalysis.primeLeaguePerformance[0].description.match(/(\d+)\s+Siege.*?(\d+)\s+Prime League.*?\((\d+)%\s+WR\)/);
+                if (match) {
+                    totalPrimeWins = parseInt(match[1]);
+                    totalPrimeGames = parseInt(match[2]);
+                    primeWinRate = parseInt(match[3]);
+                }
+            }
+            
+            // Prime League Performance Bar
+            yPos += 10;
+            doc.setFontSize(14);
+            doc.setTextColor(200, 155, 60);
+            doc.text('PRIME LEAGUE PERFORMANCE', 105, yPos, { align: 'center' });
+            yPos += 10;
+            
+            // Draw win rate bar
+            const barWidth = 150;
+            const barHeight = 15;
+            const barX = (210 - barWidth) / 2;
+            
+            // Background
+            doc.setFillColor(42, 45, 51);
+            doc.roundedRect(barX, yPos, barWidth, barHeight, 3, 3, 'F');
+            
+            // Fill based on win rate
+            const fillWidth = (primeWinRate / 100) * barWidth;
+            let fillColor = [255, 78, 78]; // Red
+            if (primeWinRate >= 60) fillColor = [78, 255, 78]; // Green
+            else if (primeWinRate >= 40) fillColor = [255, 255, 78]; // Yellow
+            
+            doc.setFillColor(...fillColor);
+            doc.roundedRect(barX, yPos, fillWidth, barHeight, 3, 3, 'F');
+            
+            // Win rate text
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${totalPrimeWins}/${totalPrimeGames} Games (${primeWinRate}% WR)`, 105, yPos + 10, { align: 'center' });
+            yPos += 25;
+            
+            // Section separator
+            doc.setDrawColor(200, 155, 60);
+            doc.setLineWidth(0.5);
+            doc.line(20, yPos, 190, yPos);
+            yPos += 15;
+            
+            // Ban or Pick Patterns (PRIORITY SECTION)
+            const banOrPickStrategy = currentAnalysis.strategies.find(s => s.title === 'Ban or Pick Patterns');
+            if (banOrPickStrategy && banOrPickStrategy.tableData) {
+                doc.setFontSize(16);
+                doc.setTextColor(255, 78, 78);
+                doc.text('⚡ CRITICAL: BAN OR PICK PATTERNS', leftMargin, yPos);
+                yPos += 10;
+                
+                doc.setFontSize(10);
+                doc.setTextColor(200, 200, 200);
+                doc.text('Champions die SOFORT gepickt werden wenn nicht gebannt:', leftMargin, yPos);
+                yPos += 10;
+                
+                // Table header
+                doc.setFillColor(30, 35, 40);
+                doc.rect(leftMargin, yPos, 170, 8, 'F');
+                doc.setTextColor(240, 230, 210);
+                doc.setFontSize(9);
+                doc.text('Champion', leftMargin + 5, yPos + 6);
+                doc.text('Gebannt', leftMargin + 50, yPos + 6);
+                doc.text('Offen', leftMargin + 75, yPos + 6);
+                doc.text('Pick Rate', leftMargin + 95, yPos + 6);
+                doc.text('Spieler', leftMargin + 125, yPos + 6);
+                yPos += 10;
+                
+                // Table rows
+                banOrPickStrategy.tableData.slice(0, 6).forEach((data, index) => {
+                    if (index % 2 === 0) {
+                        doc.setFillColor(20, 23, 28);
+                        doc.rect(leftMargin, yPos - 2, 170, 7, 'F');
+                    }
+                    
+                    doc.setFontSize(9);
+                    doc.setTextColor(240, 230, 210);
+                    doc.text(data.champion, leftMargin + 5, yPos + 3);
+                    
+                    doc.setTextColor(255, 136, 136);
+                    doc.text(`${data.banned}x`, leftMargin + 50, yPos + 3);
+                    
+                    doc.setTextColor(176, 176, 176);
+                    doc.text(`${data.open}x`, leftMargin + 75, yPos + 3);
+                    
+                    // Pick rate with color
+                    if (data.pickRate === 100) doc.setTextColor(255, 78, 78);
+                    else if (data.pickRate >= 75) doc.setTextColor(255, 170, 78);
+                    else if (data.pickRate >= 50) doc.setTextColor(255, 255, 78);
+                    else doc.setTextColor(136, 255, 136);
+                    doc.text(`${data.pickRate}%`, leftMargin + 95, yPos + 3);
+                    
+                    doc.setTextColor(200, 155, 60);
+                    doc.text(data.player, leftMargin + 125, yPos + 3);
+                    
+                    yPos += 7;
+                });
+                
+                yPos += 10;
+            }
+            
+            checkPageBreak();
+            
+            // Ban Recommendations
+            doc.setFontSize(16);
+            doc.setTextColor(255, 107, 107);
+            doc.text('🚫 BAN PRIORITÄTEN', leftMargin, yPos);
+            yPos += 10;
+            
+            currentAnalysis.banRecommendations.slice(0, 6).forEach((ban, index) => {
+                checkPageBreak(15);
+                
+                // Priority indicator
+                let prioritySymbol = '●';
+                if (ban.priority === 'very-high') {
+                    doc.setTextColor(255, 78, 78);
+                    prioritySymbol = '🔴';
+                } else if (ban.priority === 'high') {
+                    doc.setTextColor(255, 170, 78);
+                    prioritySymbol = '🟡';
+                } else {
+                    doc.setTextColor(136, 255, 136);
+                    prioritySymbol = '🟢';
+                }
+                
+                doc.setFontSize(11);
+                doc.text(`${index + 1}. ${ban.champion}`, leftMargin + 5, yPos);
+                
+                doc.setFontSize(9);
+                doc.setTextColor(180, 180, 180);
+                const reasonLines = doc.splitTextToSize(ban.reason, 160);
+                reasonLines.forEach((line, i) => {
+                    if (i < 2) { // Max 2 lines
+                        doc.text(line, leftMargin + 10, yPos + 6 + (i * 5));
+                    }
+                });
+                
+                yPos += 6 + Math.min(reasonLines.length, 2) * 5 + 3;
+            });
+            
+            // New page for player analysis
+            doc.addPage();
+            doc.setFillColor(10, 14, 26);
+            doc.rect(0, 0, 210, 297, 'F');
+            yPos = 20;
+            
+            doc.setFontSize(20);
+            doc.setTextColor(200, 155, 60);
+            doc.text('SPIELER ANALYSE', 105, yPos, { align: 'center' });
+            yPos += 15;
+            
+            // Player cards
+            currentAnalysis.players.forEach((player, playerIndex) => {
+                checkPageBreak(80);
+                
+                // Player header with dark background
+                doc.setFillColor(30, 35, 40);
+                doc.roundedRect(leftMargin, yPos, 170, 10, 3, 3, 'F');
+                doc.setFontSize(12);
+                doc.setTextColor(240, 230, 210);
+                doc.text(player.name, leftMargin + 5, yPos + 7);
+                
+                doc.setFontSize(9);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`${player.rank || 'Unknown'} | SoloQ WR: ${player.winRate || '?'}%`, rightMargin - 50, yPos + 7);
+                yPos += 15;
+                
+                // Prime League Stats
+                if (player.primeLeagueStats) {
+                    doc.setFontSize(10);
+                    doc.setTextColor(200, 155, 60);
+                    doc.text('Prime League Performance:', leftMargin, yPos);
+                    yPos += 6;
+                    
+                    doc.setFontSize(9);
+                    doc.setTextColor(200, 200, 200);
+                    const avgKDA = ((player.primeLeagueStats.totalKills + player.primeLeagueStats.totalAssists) / Math.max(1, player.primeLeagueStats.totalDeaths)).toFixed(2);
+                    doc.text(`${player.primeLeagueStats.games} Games | ${avgKDA} KDA`, leftMargin + 5, yPos);
+                    yPos += 6;
+                    
+                    // Prime League Champions
+                    const primeChamps = Object.entries(player.primeLeagueStats.champions)
+                        .sort(([,a], [,b]) => b.games - a.games)
+                        .slice(0, 5);
+                    
+                    if (primeChamps.length > 0) {
+                        doc.setTextColor(180, 180, 180);
+                        doc.text('Top Prime League Picks:', leftMargin + 5, yPos);
+                        yPos += 5;
+                        
+                        primeChamps.forEach(([champ, data]) => {
+                            const champKDA = ((data.totalKDA.k + data.totalKDA.a) / Math.max(1, data.totalKDA.d)).toFixed(2);
+                            doc.text(`• ${champ} (${data.games}x) - ${champKDA} KDA`, leftMargin + 10, yPos);
+                            yPos += 4;
+                        });
+                    }
+                    
+                    // Pick History Summary
+                    if (player.primeLeagueStats.pickHistory && player.primeLeagueStats.pickHistory.length > 0) {
+                        yPos += 3;
+                        doc.setTextColor(200, 155, 60);
+                        doc.text('Recent Games:', leftMargin + 5, yPos);
+                        yPos += 5;
+                        
+                        doc.setTextColor(150, 150, 150);
+                        player.primeLeagueStats.pickHistory.slice(-3).forEach(pick => {
+                            const result = pick.won ? '✓' : '✗';
+                            const matchupText = pick.matchup ? ` vs ${pick.matchup.champion}` : '';
+                            doc.text(`• M${pick.matchNumber}G${pick.gameNumber}: ${pick.champion} (${pick.kda}) ${result}${matchupText}`, leftMargin + 10, yPos);
+                            yPos += 4;
+                        });
+                    }
+                }
+                
+                // Tags with dark background
+                const tags = [];
+                if (player.isOTP) tags.push('One-Trick');
+                if (player.championPoolSize <= 3) tags.push('Small Pool');
+                if (player.performanceTrend === 'declining') tags.push('Declining Form');
+                if (player.performanceTrend === 'improving') tags.push('Good Form');
+                
+                if (tags.length > 0) {
+                    yPos += 5;
+                    doc.setFontSize(8);
+                    tags.forEach((tag, i) => {
+                        const tagX = leftMargin + (i * 35);
+                        doc.setFillColor(60, 64, 67);
+                        doc.roundedRect(tagX, yPos, 30, 5, 1, 1, 'F');
+                        doc.setTextColor(200, 200, 200);
+                        doc.text(tag, tagX + 15, yPos + 3.5, { align: 'center' });
+                    });
+                    yPos += 8;
+                }
+                
+                yPos += 10;
+            });
+            
+            // Fallback Patterns
+            checkPageBreak();
+            const fallbackStrategy = currentAnalysis.strategies.find(s => s.title === 'Fallback Patterns');
+            if (fallbackStrategy && fallbackStrategy.fallbackData) {
+                doc.setFontSize(16);
+                doc.setTextColor(200, 155, 60);
+                doc.text('🔀 FALLBACK PATTERNS', leftMargin, yPos);
+                yPos += 8;
+                
+                doc.setFontSize(9);
+                doc.setTextColor(180, 180, 180);
+                doc.text('Was sie spielen wenn ihre Mains gebannt sind:', leftMargin, yPos);
+                yPos += 8;
+                
+                Object.entries(fallbackStrategy.fallbackData).forEach(([playerName, patterns]) => {
+                    checkPageBreak(20);
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(240, 230, 210);
+                    doc.text(playerName, leftMargin, yPos);
+                    yPos += 5;
+                    
+                    doc.setFontSize(9);
+                    patterns.forEach(pattern => {
+                        doc.setTextColor(255, 136, 136);
+                        doc.text(`Wenn ${pattern.banned} gebannt →`, leftMargin + 5, yPos);
+                        doc.setTextColor(136, 255, 136);
+                        doc.text(pattern.alternatives.join(' / '), leftMargin + 55, yPos);
+                        yPos += 4;
+                    });
+                    yPos += 3;
+                });
+            }
+            
+            // Footer on last page - ensure dark background remains
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generated by LoL Enemy Scouting Tool - by iTzFuga', 105, 285, { align: 'center' });
+            doc.text(`Report created: ${new Date().toLocaleString('de-DE')}`, 105, 290, { align: 'center' });
+            
+            // Save
+            const date = new Date().toISOString().split('T')[0];
+            doc.save(`enemy-scouting-report-${date}.pdf`);
+        }
+        
+        // Verbesserte Discord Copy Function
+        function copyToDiscord() {
+            if (!currentAnalysis) return;
+            
+            let discordText = '```diff\n';
+            discordText += '🎯 LoL ENEMY SCOUTING REPORT\n';
+            discordText += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+            
+            // Prime League Performance mit Win Rate Bar
+            if (currentAnalysis.primeLeaguePerformance && currentAnalysis.primeLeaguePerformance.length > 0) {
+                discordText += '📊 PRIME LEAGUE PERFORMANCE\n';
+                discordText += '─────────────────────────────\n';
+                
+                const perfText = currentAnalysis.primeLeaguePerformance[0].description;
+                const match = perfText.match(/(\d+)\s+Siege.*?(\d+)\s+Prime League.*?\((\d+)%\s+WR\)/);
+                
+                if (match) {
+                    const wins = parseInt(match[1]);
+                    const games = parseInt(match[2]);
+                    const winRate = parseInt(match[3]);
+                    
+                    // Visual win rate bar
+                    const barLength = 20;
+                    const filledLength = Math.round((winRate / 100) * barLength);
+                    const emptyLength = barLength - filledLength;
+                    const bar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
+                    
+                    let rateSymbol = '-';
+                    if (winRate >= 60) rateSymbol = '+';
+                    else if (winRate < 40) rateSymbol = '-';
+                    
+                    discordText += `${rateSymbol} [${bar}] ${winRate}% WR\n`;
+                    discordText += `  ${wins}/${games} Games gewonnen\n\n`;
+                }
+            }
+            
+            // Ban or Pick Patterns - PRIORITY SECTION
+            const banOrPickStrategy = currentAnalysis.strategies.find(s => s.title === 'Ban or Pick Patterns');
+            if (banOrPickStrategy && banOrPickStrategy.tableData && banOrPickStrategy.tableData.length > 0) {
+                discordText += '- ⚡ CRITICAL: BAN OR PICK PATTERNS ⚡\n';
+                discordText += '─────────────────────────────────────\n';
+                discordText += '! Diese Champions werden INSTANT gepickt wenn offen!\n\n';
+                
+                banOrPickStrategy.tableData.slice(0, 5).forEach(data => {
+                    let symbol = '  ';
+                    if (data.pickRate === 100) symbol = '- ';
+                    else if (data.pickRate >= 75) symbol = '! ';
+                    
+                    const spaces = ' '.repeat(Math.max(0, 15 - data.champion.length));
+                    discordText += `${symbol}${data.champion}${spaces} → ${data.pickRate}% Pick Rate (${data.player})\n`;
+                    discordText += `     Banned: ${data.banned}x | Open: ${data.open}x | Picked: ${data.picked}x\n`;
+                });
+                
+                discordText += '\n';
+            }
+            
+            // Ban Priorities
+            discordText += '🚫 BAN PRIORITÄTEN (TOP 6)\n';
+            discordText += '──────────────────────────\n';
+            
+            currentAnalysis.banRecommendations.slice(0, 6).forEach((ban, index) => {
+                let symbol = '  ';
+                let priority = '';
+                
+                if (ban.priority === 'very-high') {
+                    symbol = '- ';
+                    priority = '[SEHR HOCH]';
+                } else if (ban.priority === 'high') {
+                    symbol = '! ';
+                    priority = '[HOCH]';
+                } else {
+                    symbol = '+ ';
+                    priority = '[MITTEL]';
+                }
+                
+                discordText += `${symbol}${index + 1}. ${ban.champion} ${priority}\n`;
+            });
+            
+            discordText += '\n';
+            
+            // Player Analysis with Prime League Focus
+            discordText += '👥 SPIELER ANALYSE (PRIME LEAGUE FOKUS)\n';
+            discordText += '────────────────────────────────────────\n';
+            
+            currentAnalysis.players.forEach(player => {
+                discordText += `\n+ ${player.name} (${player.rank || 'Unknown'})\n`;
+                
+                // Tags
+                const tags = [];
+                if (player.isOTP) tags.push('[OTP]');
+                if (player.championPoolSize <= 3) tags.push('[SMALL POOL]');
+                if (player.performanceTrend === 'declining') tags.push('[DECLINING]');
+                if (player.performanceTrend === 'improving') tags.push('[HOT]');
+                
+                if (tags.length > 0) {
+                    discordText += `  Tags: ${tags.join(' ')}\n`;
+                }
+                
+                // Prime League Stats
+                if (player.primeLeagueStats) {
+                    const avgKDA = ((player.primeLeagueStats.totalKills + player.primeLeagueStats.totalAssists) / Math.max(1, player.primeLeagueStats.totalDeaths)).toFixed(2);
+                    discordText += `  Prime Stats: ${player.primeLeagueStats.games} Games | ${avgKDA} KDA\n`;
+                    
+                    // Top Prime Picks
+                    const primeChamps = Object.entries(player.primeLeagueStats.champions)
+                        .sort(([,a], [,b]) => b.games - a.games)
+                        .slice(0, 3);
+                    
+                    if (primeChamps.length > 0) {
+                        const champList = primeChamps.map(([champ, data]) => `${champ} (${data.games}x)`).join(', ');
+                        discordText += `  Prime Picks: ${champList}\n`;
+                    }
+                }
+                
+                // Solo Queue Top Picks (nur kurz)
+                if (player.comfortPicks && player.comfortPicks.length > 0) {
+                    const topSoloQ = player.comfortPicks.slice(0, 3).map(c => c.name).join(', ');
+                    discordText += `  SoloQ Picks: ${topSoloQ}\n`;
+                }
+            });
+            
+            discordText += '\n';
+            
+            // Fallback Patterns
+            const fallbackStrategy = currentAnalysis.strategies.find(s => s.title === 'Fallback Patterns');
+            if (fallbackStrategy && fallbackStrategy.fallbackData) {
+                discordText += '🔀 FALLBACK PATTERNS\n';
+                discordText += '────────────────────\n';
+                
+                Object.entries(fallbackStrategy.fallbackData).slice(0, 3).forEach(([playerName, patterns]) => {
+                    discordText += `\n  ${playerName}:\n`;
+                    patterns.slice(0, 2).forEach(pattern => {
+                        discordText += `  - ${pattern.banned} banned → ${pattern.alternatives.join(' / ')}\n`;
+                    });
+                });
+            }
+            
+            // Quick Summary
+            discordText += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            discordText += 'QUICK SUMMARY:\n';
+            
+            // Must bans
+            const mustBans = currentAnalysis.banRecommendations
+                .filter(b => b.priority === 'very-high')
+                .slice(0, 3)
+                .map(b => b.champion);
+            
+            if (mustBans.length > 0) {
+                discordText += `- MUST BAN: ${mustBans.join(', ')}\n`;
+            }
+            
+            // One tricks
+            const oneTricks = currentAnalysis.players
+                .filter(p => p.isOTP)
+                .map(p => `${p.name} (${p.comfortPicks[0]?.name || 'Unknown'})`);
+            
+            if (oneTricks.length > 0) {
+                discordText += `- ONE-TRICKS: ${oneTricks.join(', ')}\n`;
+            }
+            
+            // Flex picks
+            if (Object.keys(currentAnalysis.flexPicks || {}).length > 0) {
+                const flexList = Object.keys(currentAnalysis.flexPicks).slice(0, 3).join(', ');
+                discordText += `- FLEX PICKS: ${flexList}\n`;
+            }
+            
+            discordText += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            discordText += `Generated: ${new Date().toLocaleString('de-DE')}\n`;
+            discordText += 'Enemy Scouting Tool | by iTzFuga```';
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(discordText).then(() => {
+                // Visual feedback
+                const btn = document.getElementById('discordBtn');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '✅ Kopiert!';
+                btn.style.background = 'linear-gradient(135deg, #00b894 0%, #00cec9 100%)';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.background = 'linear-gradient(135deg, #7289da 0%, #5865f2 100%)';
+                }, 2000);
+            }).catch(err => {
+                alert('Fehler beim Kopieren: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>
