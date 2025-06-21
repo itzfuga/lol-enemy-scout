@@ -1546,456 +1546,456 @@ function copyToDiscord() {
     try {
         // First, analyze Prime League data (wenn vorhanden)
         if (primeMatches && primeMatches.length > 0) {
-                    let totalGamesWon = 0;
-                    let totalGamesPlayed = 0;
-                    const playerPrimeStats = {};
-                    const championsPlayedInPrime = {};
-                    const bansAgainstTeam = {};
-                    const bansByTeam = {};
-                    const pickHistory = {};
+            let totalGamesWon = 0;
+            let totalGamesPlayed = 0;
+            const playerPrimeStats = {};
+            const championsPlayedInPrime = {};
+            const bansAgainstTeam = {};
+            const bansByTeam = {};
+            const pickHistory = {};
+            
+            primeMatches.forEach(match => {
+                if (debugMode) {
+                    console.log(`\n=== Analyzing Match ${match.matchNumber} ===`);
+                    console.log('Teams:', match.teams);
+                    console.log('Score:', match.score);
+                }
+                
+                match.games.forEach((game, gameIdx) => {
+                    totalGamesPlayed++;
                     
-                    primeMatches.forEach(match => {
+                    // Check if team won - basierend auf den Team-Spielern
+                    const teamPlayersInGame = Object.keys(game.playerStats || {}).filter(playerName => {
+                        const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                        return teamPlayerNames.some(teamName => 
+                            normalizedName.includes(teamName) || 
+                            teamName.includes(normalizedName)
+                        );
+                    });
+                    
+                    if (teamPlayersInGame.length > 0) {
+                        // Debug logging
                         if (debugMode) {
-                            console.log(`\n=== Analyzing Match ${match.matchNumber} ===`);
-                            console.log('Teams:', match.teams);
-                            console.log('Score:', match.score);
+                            console.log(`\nGame ${gameIdx + 1}:`);
+                            console.log('Team players found:', teamPlayersInGame);
+                            console.log('Available teams:', match.teams);
+                            console.log('Winner:', game.winner);
                         }
                         
-                        match.games.forEach((game, gameIdx) => {
-                            totalGamesPlayed++;
-                            
-                            // Check if team won - basierend auf den Team-Spielern
-                            const teamPlayersInGame = Object.keys(game.playerStats || {}).filter(playerName => {
-                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
-                                return teamPlayerNames.some(teamName => 
-                                    normalizedName.includes(teamName) || 
-                                    teamName.includes(normalizedName)
-                                );
-                            });
-                            
-                            if (teamPlayersInGame.length > 0) {
-                                // Debug logging
-                                if (debugMode) {
-                                    console.log(`\nGame ${gameIdx + 1}:`);
-                                    console.log('Team players found:', teamPlayersInGame);
-                                    console.log('Available teams:', match.teams);
-                                    console.log('Winner:', game.winner);
-                                }
-                                
-                                // Finde heraus auf welcher Seite das Team gespielt hat
-                                let teamSideIndex = -1;
-                                
-                                // Method 1: Check player stats to determine side
-                                Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
-                                    if (teamPlayersInGame.includes(pName) && pStats.side) {
-                                        teamSideIndex = pStats.side === 'side1' ? 0 : 1;
-                                    }
-                                });
-                                
-                                // Method 2: Fallback - Check based on team names
-                                if (teamSideIndex === -1 && match.teams.length >= 2) {
-                                    match.teams.forEach((teamName, idx) => {
-                                        if (teamName.includes('ABL') || 
-                                            teamName === 'ABL' ||
-                                            teamName.includes('ShadySquad') ||
-                                            teamPlayersInGame.some(p => p.includes(teamName))) {
-                                            teamSideIndex = idx;
-                                        }
-                                    });
-                                }
-                                
-                                if (debugMode) {
-                                    console.log('Team playing on side:', teamSideIndex + 1);
-                                    console.log('Team name from teams array:', match.teams[teamSideIndex]);
-                                }
-                                
-                                // Check if team won
-                                if (teamSideIndex >= 0 && match.teams.length > teamSideIndex) {
-                                    const teamName = match.teams[teamSideIndex];
-                                    // Normalize team names for comparison (remove extra spaces, make lowercase)
-                                    const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
-                                    const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
-                                    
-                                    if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
-                                        totalGamesWon++;
-                                        if (debugMode) console.log('✅ Team WON! Winner:', game.winner);
-                                    } else if (debugMode) {
-                                        console.log('❌ Team LOST. Winner was:', game.winner, 'Team was:', teamName);
-                                        console.log('Normalized comparison:', normalizedWinner, 'vs', normalizedTeamName);
-                                    }
-                                } else if (debugMode) {
-                                    console.log('⚠️ Could not determine winner - teamSideIndex:', teamSideIndex, 'teams:', match.teams);
-                                }
+                        // Finde heraus auf welcher Seite das Team gespielt hat
+                        let teamSideIndex = -1;
+                        
+                        // Method 1: Check player stats to determine side
+                        Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                            if (teamPlayersInGame.includes(pName) && pStats.side) {
+                                teamSideIndex = pStats.side === 'side1' ? 0 : 1;
                             }
-                            
-                            // Analyze bans - gegen das Team
-                            // Nutze die gleiche Logik wie oben um die Team-Seite zu finden
-                            let teamIndex = -1;
-                            
-                            // Method 1: Check player stats to determine side
-                            Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
-                                if (teamPlayersInGame.includes(pName) && pStats.side) {
-                                    teamIndex = pStats.side === 'side1' ? 0 : 1;
+                        });
+                        
+                        // Method 2: Fallback - Check based on team names
+                        if (teamSideIndex === -1 && match.teams.length >= 2) {
+                            match.teams.forEach((teamName, idx) => {
+                                if (teamName.includes('ABL') || 
+                                    teamName === 'ABL' ||
+                                    teamName.includes('ShadySquad') ||
+                                    teamPlayersInGame.some(p => p.includes(teamName))) {
+                                    teamSideIndex = idx;
                                 }
                             });
+                        }
+                        
+                        if (debugMode) {
+                            console.log('Team playing on side:', teamSideIndex + 1);
+                            console.log('Team name from teams array:', match.teams[teamSideIndex]);
+                        }
+                        
+                        // Check if team won
+                        if (teamSideIndex >= 0 && match.teams.length > teamSideIndex) {
+                            const teamName = match.teams[teamSideIndex];
+                            // Normalize team names for comparison (remove extra spaces, make lowercase)
+                            const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
+                            const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
                             
-                            // Method 2: Fallback based on team names
-                            if (teamIndex === -1 && match.teams.length >= 2) {
-                                match.teams.forEach((teamName, idx) => {
-                                    if (teamName.includes('ABL') || 
-                                        teamName === 'ABL' ||
-                                        teamName.includes('ShadySquad') ||
-                                        teamPlayersInGame.some(p => p.includes(teamName))) {
-                                        teamIndex = idx;
-                                    }
-                                });
-                            }
-                            
-                            if (teamIndex >= 0) {
-                                // Bans gegen das Team sind die Bans der anderen Seite
-                                const againstTeam = teamIndex === 0 ? game.bans.team2 : game.bans.team1;
-                                const byTeam = teamIndex === 0 ? game.bans.team1 : game.bans.team2;
-                                
-                                if (debugMode) {
-                                    console.log(`Team on side ${teamIndex + 1}`);
-                                    console.log(`Bans against team (from side ${teamIndex === 0 ? 2 : 1}):`, againstTeam);
-                                    console.log(`Bans by team (from side ${teamIndex + 1}):`, byTeam);
-                                }
-                                
-                                if (againstTeam && againstTeam.length > 0) {
-                                    againstTeam.forEach(ban => {
-                                        bansAgainstTeam[ban] = (bansAgainstTeam[ban] || 0) + 1;
-                                    });
-                                }
-                                
-                                if (byTeam && byTeam.length > 0) {
-                                    byTeam.forEach(ban => {
-                                        bansByTeam[ban] = (bansByTeam[ban] || 0) + 1;
-                                    });
-                                }
+                            if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
+                                totalGamesWon++;
+                                if (debugMode) console.log('✅ Team WON! Winner:', game.winner);
                             } else if (debugMode) {
-                                console.log('Could not determine team side for ban analysis');
+                                console.log('❌ Team LOST. Winner was:', game.winner, 'Team was:', teamName);
+                                console.log('Normalized comparison:', normalizedWinner, 'vs', normalizedTeamName);
                             }
-                            
-                            // Variable für teamIndex hier definieren, damit sie später verwendet werden kann
-                            let globalTeamIndex = teamIndex;
-                            
-                            // Track player performance - NUR Team-Spieler
-                            Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
-                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
-                                
-                                // Prüfe ob es ein Team-Spieler ist
-                                const matchingOPGGPlayer = opggPlayers.find(p => 
-                                    p.name === normalizedName || 
-                                    playerName.includes(p.name) ||
-                                    p.name.includes(normalizedName)
-                                );
-                                
-                                if (!matchingOPGGPlayer) return;
-                                
-                                const consistentName = matchingOPGGPlayer.name;
-                                
-                                if (!playerPrimeStats[consistentName]) {
-                                    playerPrimeStats[consistentName] = {
-                                        games: 0,
-                                        champions: {},
-                                        totalKills: 0,
-                                        totalDeaths: 0,
-                                        totalAssists: 0,
-                                        pickHistory: []
-                                    };
-                                }
-                                
-                                playerPrimeStats[consistentName].games++;
-                                
-                                // Track champion usage
-                                if (!playerPrimeStats[consistentName].champions[stats.champion]) {
-                                    playerPrimeStats[consistentName].champions[stats.champion] = {
-                                        games: 0,
-                                        totalKDA: { k: 0, d: 0, a: 0 }
-                                    };
-                                }
-                                playerPrimeStats[consistentName].champions[stats.champion].games++;
-                                
-                                // Track pick history with context
-                                const bannedChamps = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
-                                
-                                // Finde das Matchup
-                                let matchup = null;
-                                if (game.allPlayerStats && stats.position !== undefined && stats.side !== undefined) {
-                                    const opponentSide = stats.side === 'side1' ? 'side2' : 'side1';
-                                    const opponent = game.allPlayerStats[`${opponentSide}_${stats.position}`];
-                                    if (opponent) {
-                                        matchup = {
-                                            champion: opponent.champion,
-                                            kda: opponent.kda
-                                        };
-                                    }
-                                }
-                                
-                                // Determine if team won this game
-                                let teamWonThisGame = false;
-                                
-                                // Use the same logic as above to determine if team won
-                                let teamSideForWin = -1;
-                                
-                                // Method 1: Check player stats to determine side
-                                Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
-                                    if (teamPlayersInGame.includes(pName) && pStats.side) {
-                                        teamSideForWin = pStats.side === 'side1' ? 0 : 1;
-                                    }
-                                });
-                                
-                                // Method 2: Fallback based on team names
-                                if (teamSideForWin === -1 && match.teams.length >= 2) {
-                                    match.teams.forEach((teamName, idx) => {
-                                        if (teamName.includes('ABL') || 
-                                            teamName === 'ABL' ||
-                                            teamName.includes('ShadySquad') ||
-                                            teamName.includes('BTZ') ||
-                                            teamPlayersInGame.some(p => p.includes(teamName))) {
-                                            teamSideForWin = idx;
-                                        }
-                                    });
-                                }
-                                
-                                if (teamSideForWin >= 0 && match.teams.length > teamSideForWin) {
-                                    const teamName = match.teams[teamSideForWin];
-                                    const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
-                                    const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
-                                    
-                                    if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
-                                        teamWonThisGame = true;
-                                    }
-                                }
-                                
-                                playerPrimeStats[consistentName].pickHistory.push({
-                                    champion: stats.champion,
-                                    gameNumber: gameIdx + 1,
-                                    matchNumber: match.matchNumber,
-                                    banned: bannedChamps,
-                                    kda: stats.kda,
-                                    won: teamWonThisGame,
-                                    matchup: matchup,
-                                    position: stats.position // Speichere Position für später
-                                });
-                                
-                                // Parse KDA
-                                const kdaParts = stats.kda.split('/').map(n => parseInt(n) || 0);
-                                if (kdaParts.length === 3) {
-                                    playerPrimeStats[consistentName].totalKills += kdaParts[0];
-                                    playerPrimeStats[consistentName].totalDeaths += kdaParts[1];
-                                    playerPrimeStats[consistentName].totalAssists += kdaParts[2];
-                                    
-                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.k += kdaParts[0];
-                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.d += kdaParts[1];
-                                    playerPrimeStats[consistentName].champions[stats.champion].totalKDA.a += kdaParts[2];
-                                }
-                                
-                                // Track all champions played
-                                championsPlayedInPrime[stats.champion] = (championsPlayedInPrime[stats.champion] || 0) + 1;
-                                
-                                // Track overall champion history
-                                if (!analysis.championHistory[stats.champion]) {
-                                    analysis.championHistory[stats.champion] = [];
-                                }
-                                analysis.championHistory[stats.champion].push(consistentName);
-                            });
-                        });
-                    });
-                    
-                    // Flex Picks nur innerhalb des Teams
-                    const teamChampionPlayers = {};
-                    Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
-                        Object.keys(stats.champions).forEach(champion => {
-                            if (!teamChampionPlayers[champion]) {
-                                teamChampionPlayers[champion] = [];
-                            }
-                            teamChampionPlayers[champion].push(playerName);
-                        });
-                    });
-                    
-                    // Identifiziere Flex Picks
-                    Object.entries(teamChampionPlayers).forEach(([champion, players]) => {
-                        if (players.length > 1) {
-                            analysis.flexPicks[champion] = players;
+                        } else if (debugMode) {
+                            console.log('⚠️ Could not determine winner - teamSideIndex:', teamSideIndex, 'teams:', match.teams);
                         }
-                    });
-                    
-                    // Analyze pick patterns
-                    Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
-                        if (!analysis.pickPatterns[playerName]) {
-                            analysis.pickPatterns[playerName] = {};
-                        }
-                        
-                        stats.pickHistory.forEach(pick => {
-                            pick.banned.forEach(bannedChamp => {
-                                if (!analysis.pickPatterns[playerName][bannedChamp]) {
-                                    analysis.pickPatterns[playerName][bannedChamp] = [];
-                                }
-                                analysis.pickPatterns[playerName][bannedChamp].push(pick.champion);
-                            });
-                        });
-                    });
-                    
-                    // Store ban analysis
-                    analysis.banAnalysis.againstThem = bansAgainstTeam;
-                    analysis.banAnalysis.byThem = bansByTeam;
-                    
-                    if (debugMode) {
-                        console.log('\n=== BAN ANALYSIS SUMMARY ===');
-                        console.log('Bans against team:', bansAgainstTeam);
-                        console.log('Bans by team:', bansByTeam);
-                        console.log('Total unique bans against:', Object.keys(bansAgainstTeam).length);
-                        console.log('===========================\n');
                     }
                     
-                    // Analyze "Ban or Pick" patterns - NEU!
-                    const banOrPickPatterns = {};
-                    Object.entries(bansAgainstTeam).forEach(([champion, banCount]) => {
-                        if (banCount >= 2) {
-                            // Champion wurde oft gebannt - schaue wann er NICHT gebannt wurde
-                            let notBannedGames = [];
-                            let pickedWhenOpen = [];
-                            
-                            primeMatches.forEach(match => {
-                                match.games.forEach((game, gameIdx) => {
-                                    const allBans = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
-                                    const wasBanned = allBans.includes(champion);
-                                    
-                                    if (!wasBanned) {
-                                        notBannedGames.push({ match: match.matchNumber, game: gameIdx + 1 });
-                                        
-                                        // Wurde er gepickt?
-                                        Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
-                                            if (stats.champion === champion) {
-                                                // Finde den OP.GG Spieler
-                                                const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
-                                                const matchingPlayer = opggPlayers.find(p => 
-                                                    p.name === normalizedName || 
-                                                    playerName.includes(p.name) ||
-                                                    p.name.includes(normalizedName)
-                                                );
-                                                
-                                                if (matchingPlayer) {
-                                                    pickedWhenOpen.push({
-                                                        player: matchingPlayer.name,
-                                                        match: match.matchNumber,
-                                                        game: gameIdx + 1,
-                                                        won: game.winner === (match.teams.find(t => t === 'ABL') || match.teams[0])
-                                                    });
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
+                    // Analyze bans - gegen das Team
+                    // Nutze die gleiche Logik wie oben um die Team-Seite zu finden
+                    let teamIndex = -1;
+                    
+                    // Method 1: Check player stats to determine side
+                    Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                        if (teamPlayersInGame.includes(pName) && pStats.side) {
+                            teamIndex = pStats.side === 'side1' ? 0 : 1;
+                        }
+                    });
+                    
+                    // Method 2: Fallback based on team names
+                    if (teamIndex === -1 && match.teams.length >= 2) {
+                        match.teams.forEach((teamName, idx) => {
+                            if (teamName.includes('ABL') || 
+                                teamName === 'ABL' ||
+                                teamName.includes('ShadySquad') ||
+                                teamPlayersInGame.some(p => p.includes(teamName))) {
+                                teamIndex = idx;
+                            }
+                        });
+                    }
+                    
+                    if (teamIndex >= 0) {
+                        // Bans gegen das Team sind die Bans der anderen Seite
+                        const againstTeam = teamIndex === 0 ? game.bans.team2 : game.bans.team1;
+                        const byTeam = teamIndex === 0 ? game.bans.team1 : game.bans.team2;
+                        
+                        if (debugMode) {
+                            console.log(`Team on side ${teamIndex + 1}`);
+                            console.log(`Bans against team (from side ${teamIndex === 0 ? 2 : 1}):`, againstTeam);
+                            console.log(`Bans by team (from side ${teamIndex + 1}):`, byTeam);
+                        }
+                        
+                        if (againstTeam && againstTeam.length > 0) {
+                            againstTeam.forEach(ban => {
+                                bansAgainstTeam[ban] = (bansAgainstTeam[ban] || 0) + 1;
                             });
-                            
-                            if (notBannedGames.length > 0 && pickedWhenOpen.length > 0) {
-                                banOrPickPatterns[champion] = {
-                                    banCount: banCount,
-                                    notBannedCount: notBannedGames.length,
-                                    pickedCount: pickedWhenOpen.length,
-                                    pickRate: Math.round((pickedWhenOpen.length / notBannedGames.length) * 100),
-                                    pickedBy: pickedWhenOpen
+                        }
+                        
+                        if (byTeam && byTeam.length > 0) {
+                            byTeam.forEach(ban => {
+                                bansByTeam[ban] = (bansByTeam[ban] || 0) + 1;
+                            });
+                        }
+                    } else if (debugMode) {
+                        console.log('Could not determine team side for ban analysis');
+                    }
+                    
+                    // Variable für teamIndex hier definieren, damit sie später verwendet werden kann
+                    let globalTeamIndex = teamIndex;
+                    
+                    // Track player performance - NUR Team-Spieler
+                    Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
+                        const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                        
+                        // Prüfe ob es ein Team-Spieler ist
+                        const matchingOPGGPlayer = opggPlayers.find(p => 
+                            p.name === normalizedName || 
+                            playerName.includes(p.name) ||
+                            p.name.includes(normalizedName)
+                        );
+                        
+                        if (!matchingOPGGPlayer) return;
+                        
+                        const consistentName = matchingOPGGPlayer.name;
+                        
+                        if (!playerPrimeStats[consistentName]) {
+                            playerPrimeStats[consistentName] = {
+                                games: 0,
+                                champions: {},
+                                totalKills: 0,
+                                totalDeaths: 0,
+                                totalAssists: 0,
+                                pickHistory: []
+                            };
+                        }
+                        
+                        playerPrimeStats[consistentName].games++;
+                        
+                        // Track champion usage
+                        if (!playerPrimeStats[consistentName].champions[stats.champion]) {
+                            playerPrimeStats[consistentName].champions[stats.champion] = {
+                                games: 0,
+                                totalKDA: { k: 0, d: 0, a: 0 }
+                            };
+                        }
+                        playerPrimeStats[consistentName].champions[stats.champion].games++;
+                        
+                        // Track pick history with context
+                        const bannedChamps = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
+                        
+                        // Finde das Matchup
+                        let matchup = null;
+                        if (game.allPlayerStats && stats.position !== undefined && stats.side !== undefined) {
+                            const opponentSide = stats.side === 'side1' ? 'side2' : 'side1';
+                            const opponent = game.allPlayerStats[`${opponentSide}_${stats.position}`];
+                            if (opponent) {
+                                matchup = {
+                                    champion: opponent.champion,
+                                    kda: opponent.kda
                                 };
                             }
                         }
-                    });
-                    
-                    analysis.banOrPickPatterns = banOrPickPatterns;
-                    
-                    // Add Prime League performance summary
-                    const winRate = totalGamesPlayed > 0 ? Math.round((totalGamesWon / totalGamesPlayed) * 100) : 0;
-                    
-                    if (debugMode) {
-                        console.log('=== Prime League Summary ===');
-                        console.log(`Total games: ${totalGamesPlayed}`);
-                        console.log(`Games won: ${totalGamesWon}`);
-                        console.log(`Win rate: ${winRate}%`);
-                        console.log('===========================');
-                    }
-                    
-                    analysis.primeLeaguePerformance.push({
-                        type: 'summary',
-                        description: `${totalGamesWon} Siege in ${totalGamesPlayed} Prime League Spielen (${winRate}% WR)`
-                    });
-                    
-                    // Add "Ban or Pick" patterns - WICHTIGSTE INFO ZUERST!
-                    if (Object.keys(analysis.banOrPickPatterns || {}).length > 0) {
-                        const banOrPickDetails = [];
-                        const banOrPickTableData = [];
                         
-                        Object.entries(analysis.banOrPickPatterns).forEach(([champion, data]) => {
-                            const mainPicker = data.pickedBy[0]?.player;
-                            banOrPickTableData.push({
-                                champion: champion,
-                                banned: data.banCount,
-                                open: data.notBannedCount,
-                                picked: data.pickedCount,
-                                pickRate: data.pickRate,
-                                player: mainPicker
-                            });
+                        // Determine if team won this game
+                        let teamWonThisGame = false;
+                        
+                        // Use the same logic as above to determine if team won
+                        let teamSideForWin = -1;
+                        
+                        // Method 1: Check player stats to determine side
+                        Object.entries(game.playerStats || {}).forEach(([pName, pStats]) => {
+                            if (teamPlayersInGame.includes(pName) && pStats.side) {
+                                teamSideForWin = pStats.side === 'side1' ? 0 : 1;
+                            }
                         });
                         
-                        // Sortiere nach Pickrate (absteigend)
-                        banOrPickTableData.sort((a, b) => b.pickRate - a.pickRate || b.picked - a.picked);
-                        
-                        if (banOrPickTableData.length > 0) {
-                            analysis.strategies.unshift({  // unshift statt push für erste Position
-                                title: 'Ban or Pick Patterns',
-                                description: 'Champions die instant gepickt werden wenn sie nicht gebannt sind',
-                                tableData: banOrPickTableData  // Neues Format für Tabellendarstellung
+                        // Method 2: Fallback based on team names
+                        if (teamSideForWin === -1 && match.teams.length >= 2) {
+                            match.teams.forEach((teamName, idx) => {
+                                if (teamName.includes('ABL') || 
+                                    teamName === 'ABL' ||
+                                    teamName.includes('ShadySquad') ||
+                                    teamName.includes('BTZ') ||
+                                    teamPlayersInGame.some(p => p.includes(teamName))) {
+                                    teamSideForWin = idx;
+                                }
                             });
                         }
-                    }
-                    
-                    // Add flex pick strategy
-                    if (Object.keys(analysis.flexPicks).length > 0) {
-                        const flexDetails = Object.entries(analysis.flexPicks).map(([champ, players]) => 
-                            `${champ}: ${players.join(' + ')} (Flex Pick)`
-                        );
                         
-                        analysis.strategies.push({
-                            title: 'Flex Picks',
-                            description: 'Champions die von mehreren Spielern gespielt werden können',
-                            details: flexDetails
+                        if (teamSideForWin >= 0 && match.teams.length > teamSideForWin) {
+                            const teamName = match.teams[teamSideForWin];
+                            const normalizedTeamName = teamName ? teamName.trim().toLowerCase() : '';
+                            const normalizedWinner = game.winner ? game.winner.trim().toLowerCase() : '';
+                            
+                            if (normalizedTeamName && normalizedWinner === normalizedTeamName) {
+                                teamWonThisGame = true;
+                            }
+                        }
+                        
+                        playerPrimeStats[consistentName].pickHistory.push({
+                            champion: stats.champion,
+                            gameNumber: gameIdx + 1,
+                            matchNumber: match.matchNumber,
+                            banned: bannedChamps,
+                            kda: stats.kda,
+                            won: teamWonThisGame,
+                            matchup: matchup,
+                            position: stats.position // Speichere Position für später
                         });
+                        
+                        // Parse KDA
+                        const kdaParts = stats.kda.split('/').map(n => parseInt(n) || 0);
+                        if (kdaParts.length === 3) {
+                            playerPrimeStats[consistentName].totalKills += kdaParts[0];
+                            playerPrimeStats[consistentName].totalDeaths += kdaParts[1];
+                            playerPrimeStats[consistentName].totalAssists += kdaParts[2];
+                            
+                            playerPrimeStats[consistentName].champions[stats.champion].totalKDA.k += kdaParts[0];
+                            playerPrimeStats[consistentName].champions[stats.champion].totalKDA.d += kdaParts[1];
+                            playerPrimeStats[consistentName].champions[stats.champion].totalKDA.a += kdaParts[2];
+                        }
+                        
+                        // Track all champions played
+                        championsPlayedInPrime[stats.champion] = (championsPlayedInPrime[stats.champion] || 0) + 1;
+                        
+                        // Track overall champion history
+                        if (!analysis.championHistory[stats.champion]) {
+                            analysis.championHistory[stats.champion] = [];
+                        }
+                        analysis.championHistory[stats.champion].push(consistentName);
+                    });
+                });
+            });
+            
+            // Flex Picks nur innerhalb des Teams
+            const teamChampionPlayers = {};
+            Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
+                Object.keys(stats.champions).forEach(champion => {
+                    if (!teamChampionPlayers[champion]) {
+                        teamChampionPlayers[champion] = [];
                     }
+                    teamChampionPlayers[champion].push(playerName);
+                });
+            });
+            
+            // Identifiziere Flex Picks
+            Object.entries(teamChampionPlayers).forEach(([champion, players]) => {
+                if (players.length > 1) {
+                    analysis.flexPicks[champion] = players;
+                }
+            });
+            
+            // Analyze pick patterns
+            Object.entries(playerPrimeStats).forEach(([playerName, stats]) => {
+                if (!analysis.pickPatterns[playerName]) {
+                    analysis.pickPatterns[playerName] = {};
+                }
+                
+                stats.pickHistory.forEach(pick => {
+                    pick.banned.forEach(bannedChamp => {
+                        if (!analysis.pickPatterns[playerName][bannedChamp]) {
+                            analysis.pickPatterns[playerName][bannedChamp] = [];
+                        }
+                        analysis.pickPatterns[playerName][bannedChamp].push(pick.champion);
+                    });
+                });
+            });
+            
+            // Store ban analysis
+            analysis.banAnalysis.againstThem = bansAgainstTeam;
+            analysis.banAnalysis.byThem = bansByTeam;
+            
+            if (debugMode) {
+                console.log('\n=== BAN ANALYSIS SUMMARY ===');
+                console.log('Bans against team:', bansAgainstTeam);
+                console.log('Bans by team:', bansByTeam);
+                console.log('Total unique bans against:', Object.keys(bansAgainstTeam).length);
+                console.log('===========================\n');
+            }
+            
+            // Analyze "Ban or Pick" patterns - NEU!
+            const banOrPickPatterns = {};
+            Object.entries(bansAgainstTeam).forEach(([champion, banCount]) => {
+                if (banCount >= 2) {
+                    // Champion wurde oft gebannt - schaue wann er NICHT gebannt wurde
+                    let notBannedGames = [];
+                    let pickedWhenOpen = [];
                     
-                    // Add fallback strategies - VERBESSERTES FORMAT
-                    const fallbackByPlayer = {};
-                    Object.entries(analysis.pickPatterns).forEach(([playerName, patterns]) => {
-                        Object.entries(patterns).forEach(([bannedChamp, picks]) => {
-                            const uniquePicks = [...new Set(picks)];
-                            if (uniquePicks.length > 0) {
-                                const player = opggPlayers.find(p => p.name === playerName);
-                                if (player && player.champions.some(c => c.name === bannedChamp && c.games > 20)) {
-                                    if (!fallbackByPlayer[playerName]) {
-                                        fallbackByPlayer[playerName] = [];
+                    primeMatches.forEach(match => {
+                        match.games.forEach((game, gameIdx) => {
+                            const allBans = [...(game.bans.team1 || []), ...(game.bans.team2 || [])];
+                            const wasBanned = allBans.includes(champion);
+                            
+                            if (!wasBanned) {
+                                notBannedGames.push({ match: match.matchNumber, game: gameIdx + 1 });
+                                
+                                // Wurde er gepickt?
+                                Object.entries(game.playerStats || {}).forEach(([playerName, stats]) => {
+                                    if (stats.champion === champion) {
+                                        // Finde den OP.GG Spieler
+                                        const normalizedName = playerName.replace(/^ABL\s+/, '').split('#')[0];
+                                        const matchingPlayer = opggPlayers.find(p => 
+                                            p.name === normalizedName || 
+                                            playerName.includes(p.name) ||
+                                            p.name.includes(normalizedName)
+                                        );
+                                        
+                                        if (matchingPlayer) {
+                                            pickedWhenOpen.push({
+                                                player: matchingPlayer.name,
+                                                match: match.matchNumber,
+                                                game: gameIdx + 1,
+                                                won: game.winner === (match.teams.find(t => t === 'ABL') || match.teams[0])
+                                            });
+                                        }
                                     }
-                                    fallbackByPlayer[playerName].push({
-                                        banned: bannedChamp,
-                                        alternatives: uniquePicks
-                                    });
-                                }
+                                });
                             }
                         });
                     });
                     
-                    if (Object.keys(fallbackByPlayer).length > 0) {
-                        analysis.strategies.push({
-                            title: 'Fallback Patterns',
-                            description: 'Was sie spielen wenn ihre Mains gebannt sind',
-                            fallbackData: fallbackByPlayer  // Neues Format für bessere Darstellung
-                        });
+                    if (notBannedGames.length > 0 && pickedWhenOpen.length > 0) {
+                        banOrPickPatterns[champion] = {
+                            banCount: banCount,
+                            notBannedCount: notBannedGames.length,
+                            pickedCount: pickedWhenOpen.length,
+                            pickRate: Math.round((pickedWhenOpen.length / notBannedGames.length) * 100),
+                            pickedBy: pickedWhenOpen
+                        };
                     }
-                    
-                    // Store Prime League stats
-                    analysis.primeLeagueStats = playerPrimeStats;
                 }
+            });
+            
+            analysis.banOrPickPatterns = banOrPickPatterns;
+            
+            // Add Prime League performance summary
+            const winRate = totalGamesPlayed > 0 ? Math.round((totalGamesWon / totalGamesPlayed) * 100) : 0;
+            
+            if (debugMode) {
+                console.log('=== Prime League Summary ===');
+                console.log(`Total games: ${totalGamesPlayed}`);
+                console.log(`Games won: ${totalGamesWon}`);
+                console.log(`Win rate: ${winRate}%`);
+                console.log('===========================');
+            }
+            
+            analysis.primeLeaguePerformance.push({
+                type: 'summary',
+                description: `${totalGamesWon} Siege in ${totalGamesPlayed} Prime League Spielen (${winRate}% WR)`
+            });
+            
+            // Add "Ban or Pick" patterns - WICHTIGSTE INFO ZUERST!
+            if (Object.keys(analysis.banOrPickPatterns || {}).length > 0) {
+                const banOrPickDetails = [];
+                const banOrPickTableData = [];
                 
-                // Calculate comprehensive ban priorities based on available data
+                Object.entries(analysis.banOrPickPatterns).forEach(([champion, data]) => {
+                    const mainPicker = data.pickedBy[0]?.player;
+                    banOrPickTableData.push({
+                        champion: champion,
+                        banned: data.banCount,
+                        open: data.notBannedCount,
+                        picked: data.pickedCount,
+                        pickRate: data.pickRate,
+                        player: mainPicker
+                    });
+                });
+                
+                // Sortiere nach Pickrate (absteigend)
+                banOrPickTableData.sort((a, b) => b.pickRate - a.pickRate || b.picked - a.picked);
+                
+                if (banOrPickTableData.length > 0) {
+                    analysis.strategies.unshift({  // unshift statt push für erste Position
+                        title: 'Ban or Pick Patterns',
+                        description: 'Champions die instant gepickt werden wenn sie nicht gebannt sind',
+                        tableData: banOrPickTableData  // Neues Format für Tabellendarstellung
+                    });
+                }
+            }
+            
+            // Add flex pick strategy
+            if (Object.keys(analysis.flexPicks).length > 0) {
+                const flexDetails = Object.entries(analysis.flexPicks).map(([champ, players]) => 
+                    `${champ}: ${players.join(' + ')} (Flex Pick)`
+                );
+                
+                analysis.strategies.push({
+                    title: 'Flex Picks',
+                    description: 'Champions die von mehreren Spielern gespielt werden können',
+                    details: flexDetails
+                });
+            }
+            
+            // Add fallback strategies - VERBESSERTES FORMAT
+            const fallbackByPlayer = {};
+            Object.entries(analysis.pickPatterns).forEach(([playerName, patterns]) => {
+                Object.entries(patterns).forEach(([bannedChamp, picks]) => {
+                    const uniquePicks = [...new Set(picks)];
+                    if (uniquePicks.length > 0) {
+                        const player = opggPlayers.find(p => p.name === playerName);
+                        if (player && player.champions.some(c => c.name === bannedChamp && c.games > 20)) {
+                            if (!fallbackByPlayer[playerName]) {
+                                fallbackByPlayer[playerName] = [];
+                            }
+                            fallbackByPlayer[playerName].push({
+                                banned: bannedChamp,
+                                alternatives: uniquePicks
+                            });
+                        }
+                    }
+                });
+            });
+            
+            if (Object.keys(fallbackByPlayer).length > 0) {
+                analysis.strategies.push({
+                    title: 'Fallback Patterns',
+                    description: 'Was sie spielen wenn ihre Mains gebannt sind',
+                    fallbackData: fallbackByPlayer  // Neues Format für bessere Darstellung
+                });
+            }
+            
+            // Store Prime League stats
+            analysis.primeLeagueStats = playerPrimeStats;
+        }
+        
+        // Calculate comprehensive ban priorities based on multiple factors
         const championBanScores = new Map();
         
         // Analyze each player's data
@@ -2012,56 +2012,56 @@ function copyToDiscord() {
                 isOTP: false,
                 performanceTrend: 'stable'
             };
-                    
-                    // Ensure champions array exists
-                    if (!player.champions || !Array.isArray(player.champions)) {
-                        player.champions = [];
-                    }
-                    
-                    // Sort all champions by games played
-                    player.champions.sort((a, b) => b.games - a.games);
-                    
-                    // Calculate champion pool size (champions with 5+ games)
-                    playerAnalysis.championPoolSize = player.champions.filter(c => c.games >= 5).length;
-                    
-                    // Check if player is a one-trick pony (50%+ games on one champ)
-                    if (player.champions.length > 0) {
-                        const totalGames = player.champions.reduce((sum, c) => sum + c.games, 0);
-                        const topChampGames = player.champions[0].games;
-                        if (topChampGames / totalGames >= 0.5) {
-                            playerAnalysis.isOTP = true;
-                            playerAnalysis.notes.push(`⚠️ One-Trick: ${Math.round((topChampGames / totalGames) * 100)}% aller Spiele auf ${player.champions[0].name}`);
-                        }
-                    }
-                    
-                    // Analyze performance trend in Prime League
-                    if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.pickHistory.length >= 3) {
-                        const recentGames = playerAnalysis.primeLeagueStats.pickHistory.slice(-3);
-                        const recentWins = recentGames.filter(g => g.won).length;
-                        const recentKDAs = recentGames.map(g => {
-                            const parts = g.kda.split('/').map(n => parseInt(n) || 0);
-                            return parts.length === 3 ? (parts[0] + parts[2]) / Math.max(1, parts[1]) : 0;
-                        });
-                        const avgRecentKDA = recentKDAs.reduce((a, b) => a + b, 0) / recentKDAs.length;
-                        
-                        if (recentWins === 0 && avgRecentKDA < 2) {
-                            playerAnalysis.performanceTrend = 'declining';
-                            playerAnalysis.notes.push('📉 Negative Form in Prime League (letzte 3 Spiele)');
-                        } else if (recentWins >= 2 && avgRecentKDA > 3) {
-                            playerAnalysis.performanceTrend = 'improving';
-                            playerAnalysis.notes.push('📈 Gute Form in Prime League (letzte 3 Spiele)');
-                        }
-                    }
-                    
-                    // Simply take top 10 champions by games played as comfort picks
-                    playerAnalysis.comfortPicks = player.champions.slice(0, 10);
-                    
-                     // Calculate ban scores for each champion - ANGEPASST für Solo Queue only
+            
+            // Ensure champions array exists
+            if (!player.champions || !Array.isArray(player.champions)) {
+                player.champions = [];
+            }
+            
+            // Sort all champions by games played
+            player.champions.sort((a, b) => b.games - a.games);
+            
+            // Calculate champion pool size (champions with 5+ games)
+            playerAnalysis.championPoolSize = player.champions.filter(c => c.games >= 5).length;
+            
+            // Check if player is a one-trick pony (50%+ games on one champ)
+            if (player.champions.length > 0) {
+                const totalGames = player.champions.reduce((sum, c) => sum + c.games, 0);
+                const topChampGames = player.champions[0].games;
+                if (topChampGames / totalGames >= 0.5) {
+                    playerAnalysis.isOTP = true;
+                    playerAnalysis.notes.push(`⚠️ One-Trick: ${Math.round((topChampGames / totalGames) * 100)}% aller Spiele auf ${player.champions[0].name}`);
+                }
+            }
+            
+            // Analyze performance trend in Prime League
+            if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.pickHistory.length >= 3) {
+                const recentGames = playerAnalysis.primeLeagueStats.pickHistory.slice(-3);
+                const recentWins = recentGames.filter(g => g.won).length;
+                const recentKDAs = recentGames.map(g => {
+                    const parts = g.kda.split('/').map(n => parseInt(n) || 0);
+                    return parts.length === 3 ? (parts[0] + parts[2]) / Math.max(1, parts[1]) : 0;
+                });
+                const avgRecentKDA = recentKDAs.reduce((a, b) => a + b, 0) / recentKDAs.length;
+                
+                if (recentWins === 0 && avgRecentKDA < 2) {
+                    playerAnalysis.performanceTrend = 'declining';
+                    playerAnalysis.notes.push('📉 Negative Form in Prime League (letzte 3 Spiele)');
+                } else if (recentWins >= 2 && avgRecentKDA > 3) {
+                    playerAnalysis.performanceTrend = 'improving';
+                    playerAnalysis.notes.push('📈 Gute Form in Prime League (letzte 3 Spiele)');
+                }
+            }
+            
+            // Simply take top 10 champions by games played as comfort picks
+            playerAnalysis.comfortPicks = player.champions.slice(0, 10);
+            
+            // Calculate ban scores for each champion - ANGEPASST für Solo Queue only
             player.champions.forEach(champion => {
                 const championName = champion.name;
                 let score = 0;
-                        
-                        // Factor 1: Solo Queue Performance (wenn keine Prime Daten, dann mehr Gewicht)
+                
+                // Factor 1: Solo Queue Performance (wenn keine Prime Daten, dann mehr Gewicht)
                 const soloQGames = champion.games;
                 const soloQWinRate = champion.winRate || 50;
                 
@@ -2098,28 +2098,29 @@ function copyToDiscord() {
                     else if (champPickRate >= 30) score += 15;
                     else if (champPickRate >= 20) score += 10;
                 }
-                        
-                        if (analysis.hasPrimeData) {
+                
+                // Rest des Scoring Codes (Prime League spezifisch) nur wenn Daten vorhanden
+                if (analysis.hasPrimeData) {
                     // Factor 2: Prime League Performance
                     if (playerAnalysis.primeLeagueStats && playerAnalysis.primeLeagueStats.champions[championName]) {
-                            const primeGames = playerAnalysis.primeLeagueStats.champions[championName].games;
-                            const totalPrimeGames = playerAnalysis.primeLeagueStats.games;
-                            const primePickRate = (primeGames / totalPrimeGames) * 100;
-                            
-                            // Prime pick rate score (max 20 points)
-                            if (primePickRate >= 50) score += 20;
-                            else if (primePickRate >= 33) score += 15;
-                            else if (primePickRate >= 20) score += 10;
-                            else if (primePickRate >= 10) score += 5;
-                            
-                            // Prime games played (max 10 points)
-                            if (primeGames >= 4) score += 10;
-                            else if (primeGames >= 3) score += 7;
-                            else if (primeGames >= 2) score += 5;
-                            else if (primeGames >= 1) score += 3;
-                        }
+                        const primeGames = playerAnalysis.primeLeagueStats.champions[championName].games;
+                        const totalPrimeGames = playerAnalysis.primeLeagueStats.games;
+                        const primePickRate = (primeGames / totalPrimeGames) * 100;
                         
-                        // Factor 3: Ban Rate gegen Team
+                        // Prime pick rate score (max 20 points)
+                        if (primePickRate >= 50) score += 20;
+                        else if (primePickRate >= 33) score += 15;
+                        else if (primePickRate >= 20) score += 10;
+                        else if (primePickRate >= 10) score += 5;
+                        
+                        // Prime games played (max 10 points)
+                        if (primeGames >= 4) score += 10;
+                        else if (primeGames >= 3) score += 7;
+                        else if (primeGames >= 2) score += 5;
+                        else if (primeGames >= 1) score += 3;
+                    }
+                    
+                    // Factor 3: Ban Rate gegen Team
                     const banCount = analysis.banAnalysis.againstThem[championName] || 0;
                     if (banCount >= 5) score += 20;
                     else if (banCount >= 3) score += 15;
@@ -2151,13 +2152,26 @@ function copyToDiscord() {
                 }
             });
             
+            // Solo Queue specific weaknesses
+            if (player.winRate && player.winRate < 48) {
+                playerAnalysis.notes.push(`Schwache Solo Queue Form (${player.winRate}% WR)`);
+            }
+            
+            // No data fallback
+            if (player.champions.length === 0) {
+                playerAnalysis.notes.push('Keine Solo Queue Champion-Daten verfügbar');
+            }
+            
+            // Pass through sorted champions
+            playerAnalysis.champions = player.champions;
+            
             analysis.players.push(playerAnalysis);
         });
         
-        // Generate ban recommendations
+        // Generate ban recommendations based on scores
         const sortedBanScores = Array.from(championBanScores.entries())
             .sort(([,a], [,b]) => b.score - a.score)
-            .slice(0, 10);
+            .slice(0, 10); // Top 10 ban candidates
         
         sortedBanScores.forEach(([champion, data]) => {
             let priority = 'medium';
@@ -2204,20 +2218,27 @@ function copyToDiscord() {
             
             reason += factors.join(', ');
             
+            // Special case for must-ban champions
+            if (data.pickRate === 100 && data.banCount >= 2) {
+                reason = `MUSS gebannt werden! ${reason}`;
+                priority = 'very-high';
+            }
+            
             analysis.banRecommendations.push({
                 champion: champion,
                 reason: reason,
                 priority: priority,
                 source: source,
-                score: data.score
+                score: data.score // For debugging
             });
         });
         
-        // Sort ban recommendations
+        // Sort ban recommendations by priority and score
         analysis.banRecommendations.sort((a, b) => {
             const priorityOrder = { 'very-high': 0, 'high': 1, 'medium': 2, 'low': 3 };
             const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
             if (priorityDiff !== 0) return priorityDiff;
+            // If same priority, sort by score
             return (b.score || 0) - (a.score || 0);
         });
         
@@ -2273,6 +2294,44 @@ function copyToDiscord() {
                     title: 'High Performance Champions',
                     description: 'Champions mit besonders hohen Win Rates',
                     details: highPerformers
+                });
+            }
+        } else {
+            // Prime League spezifische Strategien (falls vorhanden)
+            // Check for mental boom patterns
+            const mentalBoomPlayers = [];
+            if (analysis.primeLeagueStats) {
+                Object.entries(analysis.primeLeagueStats).forEach(([playerName, stats]) => {
+                    const avgDeaths = stats.totalDeaths / stats.games;
+                    if (avgDeaths > 7) {
+                        mentalBoomPlayers.push(`${playerName} (${avgDeaths.toFixed(1)} Deaths/Game)`);
+                    }
+                });
+            }
+            
+            if (mentalBoomPlayers.length > 0) {
+                analysis.strategies.push({
+                    title: 'Mental Boom Targets',
+                    description: 'Diese Spieler sterben oft und tilten möglicherweise',
+                    details: mentalBoomPlayers
+                });
+            }
+            
+            // Analyze champion pool flexibility
+            const flexibilityAnalysis = [];
+            analysis.players.forEach(player => {
+                if (player.isOTP) {
+                    flexibilityAnalysis.push(`${player.name}: One-Trick (${player.championPoolSize} Champs) - Ban ${player.comfortPicks[0].name} = Win`);
+                } else if (player.championPoolSize <= 3) {
+                    flexibilityAnalysis.push(`${player.name}: Sehr kleiner Pool (${player.championPoolSize} Champs) - leicht auszubannen`);
+                }
+            });
+            
+            if (flexibilityAnalysis.length > 0) {
+                analysis.strategies.push({
+                    title: 'Champion Pool Schwächen',
+                    description: 'Spieler mit begrenztem Champion Pool',
+                    details: flexibilityAnalysis
                 });
             }
         }
